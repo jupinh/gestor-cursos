@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Cursos e Subsídio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF7; --card:#FBFAF7; --border:#E4E2DA;
+    --ink:#181A16; --ink-soft:#6F7169;
+    --teal:#33475A; --teal-bg:transparent;
+    --red:#8B4B3C; --red-bg:transparent;
+    --amber:#8A6B2E; --amber-bg:transparent;
+    --radius:3px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Inter',sans-serif;line-height:1.6;padding:56px 24px 100px;font-size:14px}
+  .wrap{max-width:760px;margin:0 auto}
+  .layout{display:block}
+
+  .fab{position:fixed;left:28px;bottom:28px;z-index:50;background:var(--ink);color:var(--bg);border:none;border-radius:50%;width:46px;height:46px;font-size:22px;font-weight:400;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+  .fab:hover{background:var(--teal)}
+  .add-panel{position:fixed;left:28px;bottom:86px;width:320px;max-width:calc(100vw - 56px);max-height:75vh;overflow-y:auto;z-index:50;display:none;background:var(--bg);border:1px solid var(--ink);padding:22px}
+  .add-panel.open{display:block}
+  .add-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .add-panel-head button{background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;line-height:1}
+  @media (max-width:860px){ .add-panel{left:14px;right:14px;width:auto;bottom:78px} .fab{left:14px;bottom:14px} }
+
+  h1{font-family:'Source Serif 4',serif;font-weight:600;font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:13px;margin:0 0 32px}
+  .toolbar{display:flex;gap:18px;margin-bottom:36px}
+  .toolbar button{border:none;background:none;padding:0;font-size:12.5px;cursor:pointer;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--border)}
+  .toolbar button:hover{color:var(--ink);text-decoration-color:var(--ink)}
+
+  .save-banner{display:none;border:1px solid var(--red);color:var(--red);padding:10px 14px;font-size:13px;margin-bottom:24px;align-items:center;gap:10px}
+  .save-banner button{margin-left:auto;border:1px solid var(--red);background:transparent;color:var(--red);padding:4px 10px;font-size:12px;cursor:pointer}
+
+  .summary{display:flex;gap:32px;flex-wrap:wrap;margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  .stat .label{font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;text-transform:none}
+  .stat .val{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:21px}
+  .stat.ganho .val{color:var(--teal)} .stat.perdido .val{color:var(--red)} .stat.pendente .val{color:var(--amber)}
+
+  details.section{border-bottom:1px solid var(--border);margin-bottom:0;padding:0}
+  details.section summary{cursor:pointer;padding:14px 0;font-weight:500;font-size:13.5px;list-style:none;color:var(--ink)}
+  details.section summary::-webkit-details-marker{display:none}
+  details.section summary:before{content:'+ ';color:var(--ink-soft)}
+  details.section[open] summary:before{content:'– '}
+  details.section > *:not(summary){padding-bottom:20px}
+  .month-table{width:100%;border-collapse:collapse;font-size:13px}
+  .month-table th,.month-table td{padding:7px 0;text-align:right;border-top:1px solid var(--border)}
+  .month-table th:first-child,.month-table td:first-child{text-align:left}
+  .month-table th{color:var(--ink-soft);font-weight:500;font-size:11.5px}
+  .month-table td.g{color:var(--teal);font-family:'IBM Plex Mono',monospace}
+  .month-table td.p{color:var(--red);font-family:'IBM Plex Mono',monospace}
+  .month-table td.pd{color:var(--amber);font-family:'IBM Plex Mono',monospace}
+
+  .conflict-details summary{color:var(--red)}
+  .conflict-box{padding:2px 0 4px}
+  .conflict-item{font-size:12.5px;color:var(--ink-soft);margin-bottom:6px}
+  .conflict-item b{color:var(--ink);font-weight:500}
+
+  h2.section-title{font-size:12px;font-weight:500;margin:36px 0 4px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+  .card{border-bottom:1px solid var(--border);margin-bottom:0}
+  .card.completed{opacity:.55}
+  .course-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0;cursor:pointer;gap:12px;flex-wrap:wrap}
+  .course-head:hover .course-title{color:var(--teal)}
+  .course-title{font-family:'Source Serif 4',serif;font-weight:500;font-size:16px}
+  .course-meta{font-size:12px;color:var(--ink-soft);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .edit-value{border:none;background:transparent;color:var(--ink-soft);text-decoration:underline dotted;cursor:pointer;font-size:12px;padding:0}
+  .course-right{display:flex;align-items:center;gap:14px;font-family:'IBM Plex Mono',monospace;font-size:13px;flex-wrap:wrap}
+  .chev{transition:transform .15s;color:var(--ink-soft);font-family:'Inter',sans-serif}
+  .chev.open{transform:rotate(90deg)}
+  .sessions{display:none;padding-bottom:8px}
+  .sessions.open{display:block}
+  .session-row{padding:8px 0;border-top:1px solid var(--border);font-size:13px}
+  .session-main{display:flex;align-items:center;gap:10px}
+  .session-date{width:140px;flex-shrink:0;color:var(--ink-soft)}
+  .status-btns{display:flex;gap:14px;margin-left:auto}
+  .sbtn{border:none;background:transparent;padding:0;font-size:12px;cursor:pointer;color:var(--ink-soft)}
+  .sbtn.active-present{color:var(--teal);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+  .sbtn.active-absent{color:var(--red);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+  .session-value{width:50px;text-align:right;font-family:'IBM Plex Mono',monospace;flex-shrink:0;color:var(--ink-soft)}
+  .icon-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0}
+  .icon-btn:hover{color:var(--ink)}
+  .icon-btn.has-content{color:var(--teal)}
+  .session-details{display:none;margin-top:8px;padding-left:150px;gap:8px}
+  .session-details.open{display:flex;flex-wrap:wrap}
+  .session-details input{border:none;border-bottom:1px solid var(--border);padding:4px 0;font-size:12px;background:transparent;color:var(--ink)}
+  .session-details .sd-time{width:100px}
+  .session-details .sd-link{flex:1;min-width:150px}
+  .session-details .sd-note{flex:1;min-width:150px}
+  .del-course{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;padding:0;text-decoration:underline;text-decoration-color:var(--border)}
+  .del-course:hover{color:var(--red);text-decoration-color:var(--red)}
+  .complete-btn{border:1px solid var(--border);background:transparent;padding:4px 10px;font-size:11.5px;cursor:pointer;color:var(--ink-soft)}
+  .complete-btn.done{border-color:var(--teal);color:var(--teal)}
+  .add-session-row{padding:12px 0}
+  .add-session-row button{border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)}
+  .add-session-row button:hover{color:var(--ink);text-decoration-color:var(--ink)}
+  .add-session-inline{display:none;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .add-session-inline.open{display:flex}
+  .add-session-inline input{border:none;border-bottom:1px solid var(--border);padding:5px 0;font-size:12.5px;background:transparent}
+  .add-session-inline .as-date{width:126px}
+  .add-session-inline .as-time{width:90px}
+  .add-session-inline .as-link,.add-session-inline .as-note{flex:1;min-width:110px}
+  .gen-inline{display:none;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .gen-inline.open{display:flex}
+  .gen-inline input{border:none;border-bottom:1px solid var(--border);padding:5px 0;font-size:12.5px;background:transparent}
+  .gen-inline .gen-date{width:126px}
+  .gen-inline .gen-time{width:90px}
+  .gen-wd-chip{border:1px solid var(--border);padding:4px 8px;font-size:11.5px;cursor:pointer;background:transparent;color:var(--ink-soft)}
+  .gen-wd-chip.sel{border-color:var(--teal);color:var(--teal)}
+
+  .cal-nav{display:flex;align-items:center;gap:16px;padding:0 0 14px}
+  .cal-nav button{border:none;background:transparent;padding:0;cursor:pointer;color:var(--ink-soft);font-size:15px}
+  .cal-nav button:hover{color:var(--ink)}
+  .cal-label{font-weight:500;font-size:13px;min-width:120px;text-align:center;color:var(--ink)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0}
+  .cal-dow{text-align:center;font-size:10.5px;color:var(--ink-soft);padding-bottom:6px}
+  .cal-day{min-height:40px;padding:4px 0;display:flex;flex-direction:column;align-items:center;border-top:1px solid var(--border)}
+  .cal-day .num{font-size:11.5px;color:var(--ink-soft)}
+  .cal-dots{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;margin-top:3px}
+  .cal-legend{padding:16px 0 4px;display:flex;flex-wrap:wrap}
+
+  .add-form{margin-top:0}
+  .add-form h2{font-family:'Source Serif 4',serif;font-size:16px;font-weight:500;margin:0}
+  .row{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .field{flex:1;min-width:120px}
+  label{display:block;font-size:11.5px;color:var(--ink-soft);margin-bottom:5px}
+  input[type=text],input[type=number],input[type=date],textarea{width:100%;border:none;border-bottom:1px solid var(--border);padding:6px 0;font-size:13px;font-family:inherit;background:transparent;color:var(--ink)}
+  input:focus,textarea:focus{outline:none;border-color:var(--ink)}
+  textarea{min-height:64px;resize:vertical;font-family:'IBM Plex Mono',monospace;font-size:12px;border:1px solid var(--border);padding:8px}
+  .mode-toggle{display:flex;gap:18px;margin-bottom:16px}
+  .mode-toggle button{border:none;background:none;padding:0 0 3px;font-size:12.5px;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent}
+  .mode-toggle button.active{color:var(--ink);border-color:var(--ink)}
+  .weekdays{display:flex;gap:6px;flex-wrap:wrap}
+  .wd-chip{border:1px solid var(--border);padding:5px 9px;font-size:11.5px;cursor:pointer;background:transparent;color:var(--ink-soft);user-select:none}
+  .wd-chip.sel{border-color:var(--teal);color:var(--teal)}
+  .primary-btn{background:var(--ink);color:var(--bg);border:none;padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;margin-top:6px}
+  .primary-btn:hover{background:var(--teal)}
+  .hint{font-size:11.5px;color:var(--ink-soft);margin-top:8px}
+  .error{color:var(--red);font-size:12px;margin-top:8px;display:none}
+  .empty{padding:20px 0;color:var(--ink-soft);font-size:13px}
+  #file-input{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Gestor de cursos e subsídio</h1>
+  <p class="sub">Marca presenças e faltas para acompanhar o que ganhas — ou perdes — em cada curso.</p>
+
+  <div class="toolbar">
+    <button id="export-btn">Exportar dados</button>
+    <button id="import-btn">Importar dados</button>
+    <input type="file" id="file-input" accept="application/json">
+  </div>
+
+  <div class="save-banner" id="save-banner">
+    Não foi possível guardar a última alteração.
+    <button id="retry-save">Tentar novamente</button>
+  </div>
+
+  <div class="layout">
+  <div class="main-col">
+
+  <div class="summary">
+    <div class="stat ganho"><div class="label">Ganho (presenças)</div><div class="val" id="stat-ganho">0€</div></div>
+    <div class="stat perdido"><div class="label">Perdido (faltas)</div><div class="val" id="stat-perdido">0€</div></div>
+    <div class="stat pendente"><div class="label">Por confirmar</div><div class="val" id="stat-pendente">0€</div></div>
+  </div>
+
+  <div id="conflict-slot"></div>
+
+  <details class="section" open>
+    <summary>Calendário</summary>
+    <div class="cal-nav">
+      <button onclick="changeCalMonth(-1)">‹</button>
+      <span class="cal-label" id="calendar-label"></span>
+      <button onclick="changeCalMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" style="grid-template-columns:repeat(7,1fr);padding-bottom:0">
+      <div class="cal-dow">Seg</div><div class="cal-dow">Ter</div><div class="cal-dow">Qua</div>
+      <div class="cal-dow">Qui</div><div class="cal-dow">Sex</div><div class="cal-dow">Sáb</div><div class="cal-dow">Dom</div>
+    </div>
+    <div class="cal-grid" id="calendar-grid"></div>
+    <div class="cal-legend" id="calendar-legend"></div>
+  </details>
+
+  <details class="section">
+    <summary>Resumo mensal</summary>
+    <table class="month-table" id="month-table"><thead>
+      <tr><th>Mês</th><th>Ganho</th><th>Perdido</th><th>Por confirmar</th></tr>
+    </thead><tbody id="month-body"></tbody></table>
+  </details>
+
+  <h2 class="section-title">Cursos em curso</h2>
+  <div id="active-list"></div>
+
+  <details class="section" id="completed-section">
+    <summary>Cursos concluídos</summary>
+    <div id="completed-list" style="padding-bottom:6px"></div>
+  </details>
+
+  </div>
+
+  </div>
+
+  <button class="fab" id="fab-add" onclick="toggleAddPanel()">+ Adicionar curso</button>
+  <div class="add-panel" id="add-panel">
+  <div class="add-form" style="margin-top:0">
+    <div class="add-panel-head">
+      <h2 style="margin:0">Adicionar curso</h2>
+      <button onclick="toggleAddPanel()" aria-label="Fechar">✕</button>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>Nome do curso</label><input type="text" id="f-name" placeholder="Ex: Programar com IA"></div>
+    <div class="row">
+      <div class="field"><label>Valor por dia (€)</label><input type="number" id="f-value" value="6" step="0.5" min="0"></div>
+      <div class="field"><label>Horário (opcional)</label><input type="text" id="f-time" placeholder="19:00-22:00"></div>
+    </div>
+
+    <div class="mode-toggle">
+      <button type="button" id="mode-manual" class="active">Lista manual</button>
+      <button type="button" id="mode-auto">Gerar automaticamente</button>
+    </div>
+
+    <div id="manual-block">
+      <label>Datas (uma por linha, formato DD/MM/AAAA)</label>
+      <textarea id="f-dates" placeholder="17/09/2026&#10;24/09/2026"></textarea>
+    </div>
+
+    <div id="auto-block" style="display:none">
+      <div class="field" style="margin-bottom:12px"><label>Data de início</label><input type="date" id="f-start"></div>
+      <div class="field" style="margin-bottom:12px"><label>Data de fim</label><input type="date" id="f-end"></div>
+      <label>Dias da semana com aula</label>
+      <div class="weekdays" id="weekday-chips">
+        <div class="wd-chip" data-d="1">Seg</div><div class="wd-chip" data-d="2">Ter</div>
+        <div class="wd-chip" data-d="3">Qua</div><div class="wd-chip" data-d="4">Qui</div>
+        <div class="wd-chip" data-d="5">Sex</div><div class="wd-chip" data-d="6">Sáb</div>
+        <div class="wd-chip" data-d="0">Dom</div>
+      </div>
+      <p class="hint">Gera todas as datas nos dias escolhidos entre o início e o fim — podes apagar sessões individuais depois.</p>
+    </div>
+
+    <div class="error" id="f-error"></div>
+    <button class="primary-btn" id="add-btn" style="width:100%">Adicionar curso</button>
+  </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'courses-v1';
+let state = { courses: [] };
+let mode = 'manual';
+let selectedWeekdays = new Set();
+let openDetails = {}; // sessionKey -> bool, for link/note panel
+let openAddSession = {}; // courseId -> bool
+let openGenSessions = {}; // courseId -> bool
+let genWeekdays = {}; // courseId -> Set of weekday numbers
+let calYear, calMonth;
+const PALETTE = ['#7F77DD','#1D9E75','#D85A30','#D4537E','#378ADD','#639922','#BA7517','#993C1D'];
+const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+const seedData = [
+  {name:"Programar com sistemas de Inteligência Artificial", value:6, time:"19:00-22:00", dates:["17/09/2026","24/09/2026","01/10/2026","08/10/2026","15/10/2026"]},
+  {name:"Desenvolver aplicações móveis (Android)", value:6, time:"19:00-23:00", dates:["18/09/2026","23/09/2026","25/09/2026","30/09/2026","02/10/2026","07/10/2026","09/10/2026","14/10/2026","16/10/2026","21/10/2026","23/10/2026","28/10/2026","30/10/2026"]},
+  {name:"Programar com sistemas de IA (no-code)", value:6, time:"19:00-22:00", dates:["22/10/2026","29/10/2026","05/11/2026","12/11/2026","19/11/2026"]},
+  {name:"Utilizar serviços Git e GitHub", value:6, time:"19:00-23:00", dates:["04/11/2026","06/11/2026","11/11/2026","13/11/2026","18/11/2026","20/11/2026","25/11/2026"]},
+  {name:"UC01480 - Analisar evidências de ataques cibernéticos", value:6, time:"19:45-22:45", dates:["02/09/2026","07/09/2026","09/09/2026","14/09/2026","16/09/2026","21/09/2026","23/09/2026","28/09/2026","30/09/2026","07/10/2026","12/10/2026","14/10/2026","19/10/2026","21/10/2026","26/10/2026"]},
+  {name:"CCNA 2: Switching, Routing and Wireless Essentials", value:6, time:"19:00-23:00", dates:["22/09/2026","24/09/2026","29/09/2026","01/10/2026","06/10/2026","08/10/2026","13/10/2026","15/10/2026","20/10/2026","22/10/2026","27/10/2026","29/10/2026","03/11/2026","05/11/2026","10/11/2026","12/11/2026","17/11/2026","19/11/2026","24/11/2026"]},
+  {name:"Cybersecurity & Cloud Security Technician", value:6, time:"19:00-23:00", dates:[]}
+];
+
+function makeCourse(name, value, dates, time){
+  return {
+    id: 'c'+Date.now()+Math.random().toString(36).slice(2,7),
+    name, value: parseFloat(value)||0,
+    sessions: dates.map(d => ({date:d, status:'pending', time: time||'', link:'', note:''})),
+    open:false, completed:false
+  };
+}
+
+async function loadState(){
+  try{
+    const r = await window.storage.get(STORAGE_KEY, false);
+    if(r && r.value){
+      state = JSON.parse(r.value);
+      // normaliza dados antigos que não tinham estes campos
+      state.courses.forEach(c=>{
+        if(c.completed===undefined) c.completed=false;
+        c.sessions.forEach(s=>{
+          if(s.time===undefined) s.time='';
+          if(s.link===undefined) s.link='';
+          if(s.note===undefined) s.note='';
+        });
+      });
+      return;
+    }
+  }catch(e){}
+  state = { courses: seedData.map(c => makeCourse(c.name, c.value, c.dates, c.time)) };
+  await saveState();
+}
+
+async function saveState(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    document.getElementById('save-banner').style.display = 'none';
+  }catch(e){
+    document.getElementById('save-banner').style.display = 'flex';
+  }
+}
+
+function parseDMY(str){ const [d,m,y] = str.split('/').map(Number); return new Date(y,m-1,d); }
+function sortSessions(course){ course.sessions.sort((a,b) => parseDMY(a.date) - parseDMY(b.date)); }
+function weekdayLabel(dateStr){ const days=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']; return days[parseDMY(dateStr).getDay()]; }
+function monthKey(dateStr){ const d=parseDMY(dateStr); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function monthName(key){
+  const names=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const [y,m]=key.split('-'); return names[parseInt(m)-1]+' '+y;
+}
+function parseTimeRange(str){
+  const m = (str||'').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+  if(!m) return null;
+  const start = parseInt(m[1])*60+parseInt(m[2]);
+  let end = parseInt(m[3])*60+parseInt(m[4]);
+  return {start,end};
+}
+function overlaps(a,b){ return a.start < b.end && b.start < a.end; }
+
+function computeConflicts(){
+  const byDate = {};
+  state.courses.forEach(c=>{
+    c.sessions.forEach(s=>{
+      if(!byDate[s.date]) byDate[s.date]=[];
+      byDate[s.date].push({course:c.name, time:s.time});
+    });
+  });
+  const conflicts = [];
+  Object.keys(byDate).forEach(date=>{
+    const entries = byDate[date];
+    if(entries.length<2) return;
+    for(let i=0;i<entries.length;i++){
+      for(let j=i+1;j<entries.length;j++){
+        const a=entries[i], b=entries[j];
+        if(a.course===b.course) continue;
+        const ra=parseTimeRange(a.time), rb=parseTimeRange(b.time);
+        if(ra && rb){
+          if(overlaps(ra,rb)) conflicts.push({date, a:a.course, b:b.course, sure:true, ta:a.time, tb:b.time});
+        } else {
+          conflicts.push({date, a:a.course, b:b.course, sure:false, ta:a.time, tb:b.time});
+        }
+      }
+    }
+  });
+  conflicts.sort((x,y)=>parseDMY(x.date)-parseDMY(y.date));
+  return conflicts;
+}
+
+function renderConflicts(){
+  const slot = document.getElementById('conflict-slot');
+  const conflicts = computeConflicts();
+  if(conflicts.length===0){ slot.innerHTML=''; return; }
+  slot.innerHTML = `<details class="section conflict-details">
+    <summary style="color:var(--red)">⚠ ${conflicts.length} conflito(s) de horário detectado(s)</summary>
+    <div class="conflict-box" style="border:none;border-top:1px solid var(--red);border-radius:0;margin:0">` +
+    conflicts.map(c => `<div class="conflict-item">${c.date} · <b>${c.a}</b> (${c.ta||'sem horário'}) vs <b>${c.b}</b> (${c.tb||'sem horário'})${c.sure?'':' — confirmar manualmente'}</div>`).join('') +
+    `</div></details>`;
+}
+
+function renderMonthTable(){
+  const totals = {};
+  state.courses.forEach(c=>{
+    c.sessions.forEach(s=>{
+      const key = monthKey(s.date);
+      if(!totals[key]) totals[key]={g:0,p:0,pd:0};
+      if(s.status==='present') totals[key].g += c.value;
+      else if(s.status==='absent') totals[key].p += c.value;
+      else totals[key].pd += c.value;
+    });
+  });
+  const keys = Object.keys(totals).sort();
+  const body = document.getElementById('month-body');
+  if(keys.length===0){ body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Sem sessões ainda.</td></tr>'; return; }
+  body.innerHTML = keys.map(k => `
+    <tr><td>${monthName(k)}</td><td class="g">+${totals[k].g.toFixed(2)}€</td><td class="p">-${totals[k].p.toFixed(2)}€</td><td class="pd">${totals[k].pd.toFixed(2)}€</td></tr>
+  `).join('');
+}
+
+function sessionRow(course, s, i){
+  const detailKey = course.id+'-'+i;
+  const hasDetails = s.time || s.link || s.note;
+  const detailsOpen = !!openDetails[detailKey];
+  return `
+    <div class="session-row">
+      <div class="session-main">
+        <span class="session-date">${s.date} · ${weekdayLabel(s.date)}</span>
+        <div class="status-btns">
+          <button class="sbtn ${s.status==='present'?'active-present':''}" onclick="setStatus('${course.id}',${i},'present')">Presença</button>
+          <button class="sbtn ${s.status==='absent'?'active-absent':''}" onclick="setStatus('${course.id}',${i},'absent')">Falta</button>
+          <button class="sbtn ${s.status==='pending'?'active-pending':''}" onclick="setStatus('${course.id}',${i},'pending')">Pendente</button>
+        </div>
+        <span class="session-value">${course.value.toFixed(2)}€</span>
+        <button class="icon-btn ${hasDetails?'has-content':''}" onclick="toggleDetails('${detailKey}')" title="Horário, link e nota">⋯</button>
+        <button class="icon-btn" onclick="deleteSession('${course.id}',${i})" title="Remover sessão">✕</button>
+      </div>
+      <div class="session-details ${detailsOpen?'open':''}" id="details-${detailKey}">
+        <input class="sd-time" placeholder="Horário" value="${s.time}" onchange="updateSessionField('${course.id}',${i},'time',this.value)">
+        <input class="sd-link" placeholder="Link da sessão" value="${s.link}" onchange="updateSessionField('${course.id}',${i},'link',this.value)">
+        <input class="sd-note" placeholder="Nota" value="${s.note}" onchange="updateSessionField('${course.id}',${i},'note',this.value)">
+        ${s.link ? `<a href="${s.link}" target="_blank" style="font-size:12.5px;align-self:center">Abrir ↗</a>` : ''}
+      </div>
+    </div>`;
+}
+
+function courseCard(course){
+  let cGanho=0, cPerdido=0;
+  course.sessions.forEach(s=>{
+    if(s.status==='present') cGanho += course.value;
+    else if(s.status==='absent') cPerdido += course.value;
+  });
+  const sessionsHtml = course.sessions.map((s,i) => sessionRow(course, s, i)).join('') || '<div class="empty">Sem sessões — adiciona datas para este curso.</div>';
+  const addOpen = !!openAddSession[course.id];
+  const genOpen = !!openGenSessions[course.id];
+  return `
+  <div class="card ${course.completed?'completed':''}">
+    <div class="course-head" onclick="toggleCourse('${course.id}')">
+      <div>
+        <div class="course-title">${course.name}</div>
+        <div class="course-meta">${course.sessions.length} sessões · <button class="edit-value" onclick="event.stopPropagation(); editValue('${course.id}')">${course.value.toFixed(2)}€/dia</button></div>
+      </div>
+      <div class="course-right">
+        <span style="color:var(--teal)">+${cGanho.toFixed(2)}€</span>
+        <span style="color:var(--red)">-${cPerdido.toFixed(2)}€</span>
+        <button class="complete-btn ${course.completed?'done':''}" onclick="event.stopPropagation(); toggleCompleted('${course.id}')">${course.completed?'Reabrir':'Concluir'}</button>
+        <button class="del-course" onclick="event.stopPropagation(); deleteCourse('${course.id}')">Remover</button>
+        <span class="chev ${course.open?'open':''}">›</span>
+      </div>
+    </div>
+    <div class="sessions ${course.open?'open':''}">
+      ${sessionsHtml}
+      <div class="add-session-row">
+        <button onclick="toggleAddSession('${course.id}')">+ Adicionar sessão</button>
+        <button onclick="toggleGenSessions('${course.id}')" style="margin-left:8px">+ Gerar sessões automaticamente</button>
+        <div class="add-session-inline ${addOpen?'open':''}" id="add-session-${course.id}">
+          <input type="date" class="as-date" id="as-date-${course.id}">
+          <input type="text" class="as-time" placeholder="Horário" id="as-time-${course.id}">
+          <input type="text" class="as-link" placeholder="Link" id="as-link-${course.id}">
+          <input type="text" class="as-note" placeholder="Nota" id="as-note-${course.id}">
+          <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmAddSession('${course.id}')">Adicionar</button>
+        </div>
+        <div class="gen-inline ${genOpen?'open':''}" id="gen-session-${course.id}">
+          <input type="date" class="gen-date" id="gen-start-${course.id}">
+          <span style="font-size:12.5px;color:var(--ink-soft)">até</span>
+          <input type="date" class="gen-date" id="gen-end-${course.id}">
+          <div class="gen-wd-chip" data-d="1" onclick="genWeekdayClick('${course.id}',1,this)">Seg</div>
+          <div class="gen-wd-chip" data-d="2" onclick="genWeekdayClick('${course.id}',2,this)">Ter</div>
+          <div class="gen-wd-chip" data-d="3" onclick="genWeekdayClick('${course.id}',3,this)">Qua</div>
+          <div class="gen-wd-chip" data-d="4" onclick="genWeekdayClick('${course.id}',4,this)">Qui</div>
+          <div class="gen-wd-chip" data-d="5" onclick="genWeekdayClick('${course.id}',5,this)">Sex</div>
+          <div class="gen-wd-chip" data-d="6" onclick="genWeekdayClick('${course.id}',6,this)">Sáb</div>
+          <div class="gen-wd-chip" data-d="0" onclick="genWeekdayClick('${course.id}',0,this)">Dom</div>
+          <input type="text" class="gen-time" placeholder="Horário" id="gen-time-${course.id}">
+          <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmGenSessions('${course.id}')">Gerar</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function render(){
+  let ganho=0, perdido=0, pendente=0;
+  state.courses.forEach(course=>{
+    course.sessions.forEach(s=>{
+      if(s.status==='present') ganho += course.value;
+      else if(s.status==='absent') perdido += course.value;
+      else pendente += course.value;
+    });
+  });
+  document.getElementById('stat-ganho').textContent = ganho.toFixed(2)+'€';
+  document.getElementById('stat-perdido').textContent = perdido.toFixed(2)+'€';
+  document.getElementById('stat-pendente').textContent = pendente.toFixed(2)+'€';
+
+  const active = state.courses.filter(c=>!c.completed);
+  const completed = state.courses.filter(c=>c.completed);
+  const activeList = document.getElementById('active-list');
+  const completedList = document.getElementById('completed-list');
+  activeList.innerHTML = active.length ? active.map(courseCard).join('') : '<div class="card"><div class="empty">Nenhum curso em curso.</div></div>';
+  completedList.innerHTML = completed.length ? completed.map(courseCard).join('') : '<div class="empty">Nenhum curso concluído ainda.</div>';
+
+  renderConflicts();
+  renderMonthTable();
+  renderCalendar();
+}
+
+function toggleCourse(id){ state.courses.find(c=>c.id===id).open ^= true; render(); }
+function toggleDetails(key){ openDetails[key] = !openDetails[key]; render(); }
+function toggleAddSession(id){ openAddSession[id] = !openAddSession[id]; render(); }
+function toggleGenSessions(id){ openGenSessions[id] = !openGenSessions[id]; render(); }
+function genWeekdayClick(id, day, el){
+  if(!genWeekdays[id]) genWeekdays[id] = new Set();
+  const set = genWeekdays[id];
+  if(set.has(day)){ set.delete(day); el.classList.remove('sel'); }
+  else { set.add(day); el.classList.add('sel'); }
+}
+async function confirmGenSessions(id){
+  const c = state.courses.find(c=>c.id===id);
+  const startV = document.getElementById('gen-start-'+id).value;
+  const endV = document.getElementById('gen-end-'+id).value;
+  const time = document.getElementById('gen-time-'+id).value;
+  const days = genWeekdays[id];
+  if(!startV || !endV || !days || days.size===0) return;
+  const start = new Date(startV+'T00:00:00'), end = new Date(endV+'T00:00:00');
+  if(end < start) return;
+  const existingDates = new Set(c.sessions.map(s=>s.date));
+  let cur = new Date(start);
+  while(cur <= end){
+    if(days.has(cur.getDay())){
+      const dmy = toDMY(cur);
+      if(!existingDates.has(dmy)){
+        c.sessions.push({date:dmy, status:'pending', time:time||'', link:'', note:''});
+        existingDates.add(dmy);
+      }
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  sortSessions(c);
+  openGenSessions[id] = false;
+  delete genWeekdays[id];
+  render(); await saveState();
+}
+
+function initCalendarDate(){
+  let minDate = null;
+  state.courses.forEach(c=>c.sessions.forEach(s=>{
+    const d = parseDMY(s.date);
+    if(!minDate || d < minDate) minDate = d;
+  }));
+  const base = minDate || new Date();
+  calYear = base.getFullYear(); calMonth = base.getMonth();
+}
+function changeCalMonth(delta){
+  calMonth += delta;
+  if(calMonth < 0){ calMonth = 11; calYear--; }
+  if(calMonth > 11){ calMonth = 0; calYear++; }
+  renderCalendar();
+}
+function renderCalendar(){
+  document.getElementById('calendar-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+  const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const dayMap = {};
+  state.courses.forEach((c, idx) => {
+    c.sessions.forEach(s => {
+      const d = parseDMY(s.date);
+      if(d.getFullYear()===calYear && d.getMonth()===calMonth){
+        const day = d.getDate();
+        if(!dayMap[day]) dayMap[day] = [];
+        dayMap[day].push({color: PALETTE[idx % PALETTE.length], status: s.status});
+      }
+    });
+  });
+  let html = '';
+  for(let i=0;i<firstDow;i++) html += '<div></div>';
+  for(let day=1; day<=daysInMonth; day++){
+    const items = dayMap[day] || [];
+    const dots = items.map(it => `<span style="width:7px;height:7px;border-radius:50%;background:${it.color};opacity:${it.status==='absent'?0.3:1}"></span>`).join('');
+    html += `<div class="cal-day"><div class="num">${day}</div><div class="cal-dots">${dots}</div></div>`;
+  }
+  document.getElementById('calendar-grid').innerHTML = html;
+  document.getElementById('calendar-legend').innerHTML = state.courses.map((c, idx) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:${PALETTE[idx % PALETTE.length]};display:inline-block"></span>${c.name}</span>`
+  ).join('');
+}
+
+async function setStatus(id, idx, status){
+  const c = state.courses.find(c=>c.id===id); c.sessions[idx].status = status; c.open=true; render(); await saveState();
+}
+async function updateSessionField(id, idx, field, value){
+  const c = state.courses.find(c=>c.id===id); c.sessions[idx][field] = value; await saveState(); render();
+}
+async function deleteSession(id, idx){
+  const c = state.courses.find(c=>c.id===id); c.sessions.splice(idx,1); c.open=true; render(); await saveState();
+}
+async function deleteCourse(id){
+  state.courses = state.courses.filter(c=>c.id!==id); render(); await saveState();
+}
+async function toggleCompleted(id){
+  const c = state.courses.find(c=>c.id===id); c.completed = !c.completed; render(); await saveState();
+}
+async function editValue(id){
+  const c = state.courses.find(c=>c.id===id);
+  const v = prompt('Novo valor por dia (€):', c.value);
+  if(v===null) return;
+  const num = parseFloat(v.replace(',','.'));
+  if(isNaN(num)) return;
+  c.value = num; render(); await saveState();
+}
+async function confirmAddSession(id){
+  const c = state.courses.find(c=>c.id===id);
+  const dateV = document.getElementById('as-date-'+id).value;
+  if(!dateV){ return; }
+  const [y,m,d] = dateV.split('-');
+  const dmy = `${d}/${m}/${y}`;
+  c.sessions.push({
+    date: dmy, status:'pending',
+    time: document.getElementById('as-time-'+id).value,
+    link: document.getElementById('as-link-'+id).value,
+    note: document.getElementById('as-note-'+id).value
+  });
+  sortSessions(c);
+  openAddSession[id] = false;
+  render(); await saveState();
+}
+
+function toggleAddPanel(){
+  document.getElementById('add-panel').classList.toggle('open');
+}
+
+document.getElementById('retry-save').addEventListener('click', saveState);
+
+document.getElementById('mode-manual').addEventListener('click', ()=>{
+  mode='manual';
+  document.getElementById('mode-manual').classList.add('active');
+  document.getElementById('mode-auto').classList.remove('active');
+  document.getElementById('manual-block').style.display='block';
+  document.getElementById('auto-block').style.display='none';
+});
+document.getElementById('mode-auto').addEventListener('click', ()=>{
+  mode='auto';
+  document.getElementById('mode-auto').classList.add('active');
+  document.getElementById('mode-manual').classList.remove('active');
+  document.getElementById('manual-block').style.display='none';
+  document.getElementById('auto-block').style.display='block';
+});
+document.querySelectorAll('.wd-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    const d = chip.dataset.d;
+    if(selectedWeekdays.has(d)){ selectedWeekdays.delete(d); chip.classList.remove('sel'); }
+    else { selectedWeekdays.add(d); chip.classList.add('sel'); }
+  });
+});
+
+function toDMY(date){
+  const d=String(date.getDate()).padStart(2,'0'), m=String(date.getMonth()+1).padStart(2,'0'), y=date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+document.getElementById('add-btn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('f-error');
+  errEl.style.display='none';
+  const name = document.getElementById('f-name').value.trim();
+  const value = document.getElementById('f-value').value;
+  const time = document.getElementById('f-time').value.trim();
+  if(!name){ errEl.textContent='Escreve o nome do curso.'; errEl.style.display='block'; return; }
+
+  let dates = [];
+  if(mode==='manual'){
+    const raw = document.getElementById('f-dates').value.trim();
+    dates = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+    const bad = dates.find(d => !/^\d{2}\/\d{2}\/\d{4}$/.test(d));
+    if(bad){ errEl.textContent = `Data inválida: "${bad}". Usa o formato DD/MM/AAAA.`; errEl.style.display='block'; return; }
+  } else {
+    const startV = document.getElementById('f-start').value;
+    const endV = document.getElementById('f-end').value;
+    if(!startV || !endV){ errEl.textContent='Escolhe a data de início e de fim.'; errEl.style.display='block'; return; }
+    if(selectedWeekdays.size===0){ errEl.textContent='Escolhe pelo menos um dia da semana.'; errEl.style.display='block'; return; }
+    const start = new Date(startV+'T00:00:00'), end = new Date(endV+'T00:00:00');
+    if(end < start){ errEl.textContent='A data de fim tem de ser depois da data de início.'; errEl.style.display='block'; return; }
+    let cur = new Date(start);
+    while(cur <= end){
+      if(selectedWeekdays.has(String(cur.getDay()))) dates.push(toDMY(cur));
+      cur.setDate(cur.getDate()+1);
+    }
+  }
+
+  const course = makeCourse(name, value, dates, time);
+  sortSessions(course);
+  state.courses.push(course);
+  render(); await saveState();
+  toggleAddPanel();
+
+  document.getElementById('f-name').value='';
+  document.getElementById('f-dates').value='';
+  document.getElementById('f-time').value='';
+  document.getElementById('f-start').value='';
+  document.getElementById('f-end').value='';
+  selectedWeekdays.clear();
+  document.querySelectorAll('.wd-chip').forEach(c=>c.classList.remove('sel'));
+});
+
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'cursos-backup.json'; a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  document.getElementById('file-input').click();
+});
+document.getElementById('file-input').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const parsed = JSON.parse(ev.target.result);
+      if(!parsed.courses) throw new Error('formato inválido');
+      state = parsed;
+      render(); await saveState();
+    }catch(err){ alert('Não foi possível ler este ficheiro.'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+(async ()=>{
+  await loadState();
+  state.courses.forEach(sortSessions);
+  initCalendarDate();
+  render();
+})();
+</script>
+</body>
+</html>
