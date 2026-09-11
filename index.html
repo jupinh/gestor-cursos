@@ -165,6 +165,10 @@
   input:focus,textarea:focus{border-color:var(--teal)}
   .course-head:hover{background:linear-gradient(to right, transparent, transparent)}
   ::selection{background:var(--ink);color:var(--bg)}
+  .page-tabs{display:flex;gap:28px;margin-bottom:32px;border-bottom:1px solid var(--border)}
+  .page-tab{border:none;background:none;padding:0 0 12px;font-size:14.5px;font-weight:500;color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .page-tab.active{color:var(--ink);border-color:var(--ink)}
+  .page-tab:hover{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -172,14 +176,22 @@
   <div class="hero-inner">
     <p class="kicker">Setembro 2026 — Abril 2027</p>
     <h1>Gestor de cursos e subsídio</h1>
-    <p class="sub">Lista de cursos</p>
+    <p class="sub">Marca presenças e faltas para acompanhar o que ganhas — ou perdes — em cada curso.</p>
   </div>
 </div>
 <div class="wrap">
 
+  <div class="page-tabs">
+    <button class="page-tab active" data-tab="courses" onclick="showTab('courses')">Cursos</button>
+    <button class="page-tab" data-tab="work" onclick="showTab('work')">Trabalho</button>
+  </div>
+
+  <div id="tab-courses">
+
   <div class="toolbar">
     <button id="export-btn">Exportar dados</button>
     <button id="import-btn">Importar dados</button>
+    <button id="ics-btn">Exportar calendário (.ics)</button>
     <input type="file" id="file-input" accept="application/json">
   </div>
 
@@ -231,6 +243,61 @@
 
   </div>
 
+  </div>
+  </div>
+
+  <div id="tab-work" style="display:none">
+    <h2 class="section-title" style="margin-top:0">Assiduidade e vencimento</h2>
+    <div class="row" style="margin-bottom:16px">
+      <div class="field"><label>Salário base mensal (€)</label><input type="number" id="work-salary" step="1" min="0"></div>
+      <div class="field"><label>Subsídio de alimentação mensal (€)</label><input type="number" id="work-subsidy" step="1" min="0"></div>
+      <div class="field"><label>Dias úteis considerados</label><input type="number" id="work-divisor" step="1" min="1"></div>
+    </div>
+    <p class="hint" style="margin-bottom:20px">Horário de referência: Segunda a Sexta, 9h20–17h30. Cada falta desconta salário e subsídio proporcionalmente aos dias úteis definidos acima.</p>
+
+    <div class="cal-nav" style="padding-left:0">
+      <button onclick="changeWorkCalMonth(-1)">‹</button>
+      <span class="cal-label" id="work-calendar-label"></span>
+      <button onclick="changeWorkCalMonth(1)">›</button>
+    </div>
+    <div class="cal-grid" style="grid-template-columns:repeat(7,1fr);padding-bottom:0">
+      <div class="cal-dow">Seg</div><div class="cal-dow">Ter</div><div class="cal-dow">Qua</div>
+      <div class="cal-dow">Qui</div><div class="cal-dow">Sex</div><div class="cal-dow">Sáb</div><div class="cal-dow">Dom</div>
+    </div>
+    <div class="cal-grid" id="work-calendar-grid"></div>
+    <div class="cal-legend">
+      <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>Falta</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block"></span>Férias</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block"></span>Feriado</span>
+    </div>
+    <div id="work-holiday-list" style="margin-bottom:20px"></div>
+
+    <table class="month-table" id="work-month-table"><thead>
+      <tr><th>Mês</th><th>Faltas</th><th>Desconto</th><th>Receberia</th></tr>
+    </thead><tbody id="work-month-body"></tbody></table>
+
+    <div style="margin-top:18px;display:flex;gap:20px;flex-wrap:wrap">
+      <button onclick="toggleAddAbsence()" style="border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)">+ Registar falta</button>
+      <button onclick="toggleAddVacation()" style="border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)">+ Registar férias</button>
+    </div>
+    <div class="add-session-inline" id="add-absence-inline">
+      <input type="date" class="as-date" id="absence-date">
+      <select id="absence-period" style="border:none;border-bottom:1px solid var(--border);padding:5px 0;font-size:12.5px;background:transparent;color:var(--ink)">
+        <option value="full">Dia todo</option>
+        <option value="morning">Manhã</option>
+        <option value="afternoon">Tarde</option>
+      </select>
+      <input type="text" class="as-note" placeholder="Motivo (opcional)" id="absence-note" style="flex:1;min-width:160px">
+      <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmAddAbsence()">Registar falta</button>
+    </div>
+    <div class="add-session-inline" id="add-vacation-inline">
+      <input type="date" class="as-date" id="vacation-date">
+      <input type="text" class="as-note" placeholder="Nota (opcional)" id="vacation-note" style="flex:1;min-width:160px">
+      <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmAddVacation()">Registar férias</button>
+    </div>
+
+    <div id="absence-list" style="margin-top:14px"></div>
+    <div id="vacation-list" style="margin-top:8px"></div>
   </div>
 
   <button class="fab" id="fab-add" onclick="toggleAddPanel()">
@@ -293,7 +360,7 @@ async function storageSet(key, value){
   return true;
 }
 
-let state = { courses: [] };
+let state = { courses: [], work: { salary: 910, subsidy: 140, divisor: 22, absences: [], vacations: [] } };
 let mode = 'manual';
 let selectedWeekdays = new Set();
 let openDetails = {}; // sessionKey -> bool, for link/note panel
@@ -303,6 +370,41 @@ let genWeekdays = {}; // courseId -> Set of weekday numbers
 let calYear, calMonth;
 const PALETTE = ['#7F77DD','#1D9E75','#D85A30','#D4537E','#378ADD','#639922','#BA7517','#993C1D'];
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const HOLIDAYS = [
+  {date:'01/01/2026', name:'Ano Novo'},
+  {date:'17/02/2026', name:'Carnaval (facultativo)'},
+  {date:'03/04/2026', name:'Sexta-feira Santa'},
+  {date:'05/04/2026', name:'Páscoa'},
+  {date:'25/04/2026', name:'Dia da Liberdade'},
+  {date:'01/05/2026', name:'Dia do Trabalhador'},
+  {date:'04/06/2026', name:'Corpo de Deus'},
+  {date:'10/06/2026', name:'Dia de Portugal'},
+  {date:'24/06/2026', name:'São João (municipal, Braga)'},
+  {date:'15/08/2026', name:'Assunção de Nossa Senhora'},
+  {date:'05/10/2026', name:'Implantação da República'},
+  {date:'01/11/2026', name:'Todos os Santos'},
+  {date:'01/12/2026', name:'Restauração da Independência'},
+  {date:'08/12/2026', name:'Imaculada Conceição'},
+  {date:'25/12/2026', name:'Natal'},
+  {date:'01/01/2027', name:'Ano Novo'},
+  {date:'09/02/2027', name:'Carnaval (facultativo)'},
+  {date:'26/03/2027', name:'Sexta-feira Santa'},
+  {date:'28/03/2027', name:'Páscoa'},
+  {date:'25/04/2027', name:'Dia da Liberdade'},
+  {date:'01/05/2027', name:'Dia do Trabalhador'},
+  {date:'27/05/2027', name:'Corpo de Deus'},
+  {date:'10/06/2027', name:'Dia de Portugal'},
+  {date:'24/06/2027', name:'São João (municipal, Braga)'},
+  {date:'15/08/2027', name:'Assunção de Nossa Senhora'},
+  {date:'05/10/2027', name:'Implantação da República'},
+  {date:'01/11/2027', name:'Todos os Santos'},
+  {date:'01/12/2027', name:'Restauração da Independência'},
+  {date:'08/12/2027', name:'Imaculada Conceição'},
+  {date:'25/12/2027', name:'Natal'}
+];
+const HOLIDAY_MAP = {};
+HOLIDAYS.forEach(h => HOLIDAY_MAP[h.date] = h.name);
+let workCalYear, workCalMonth;
 
 const seedData = [
   {name:"Programar com sistemas de Inteligência Artificial", value:6, time:"19:00-22:00", dates:["17/09/2026","24/09/2026","01/10/2026","08/10/2026","15/10/2026"]},
@@ -337,10 +439,14 @@ async function loadState(){
           if(s.note===undefined) s.note='';
         });
       });
+      if(!state.work) state.work = { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] };
+      if(state.work.subsidy===undefined) state.work.subsidy = 140;
+      if(state.work.vacations===undefined) state.work.vacations = [];
+      state.work.absences.forEach(a=>{ if(a.period===undefined) a.period='full'; });
       return;
     }
   }catch(e){}
-  state = { courses: seedData.map(c => makeCourse(c.name, c.value, c.dates, c.time)) };
+  state = { courses: seedData.map(c => makeCourse(c.name, c.value, c.dates, c.time)), work: { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] } };
   await saveState();
 }
 
@@ -428,6 +534,155 @@ function renderMonthTable(){
     <tr><td>${monthName(k)}</td><td class="g">+${totals[k].g.toFixed(2)}€</td><td class="p">-${totals[k].p.toFixed(2)}€</td><td class="pd">${totals[k].pd.toFixed(2)}€</td></tr>
   `).join('');
 }
+
+function renderWork(){
+  const w = state.work;
+  document.getElementById('work-salary').value = w.salary || '';
+  document.getElementById('work-subsidy').value = w.subsidy || '';
+  document.getElementById('work-divisor').value = w.divisor || 22;
+
+  const dailyRate = w.divisor>0 ? ((w.salary + w.subsidy) / w.divisor) : 0;
+  const byMonth = {};
+  w.absences.forEach(a => {
+    const key = monthKey(a.date);
+    if(!byMonth[key]) byMonth[key] = 0;
+    byMonth[key] += (a.period==='full' || !a.period) ? 1 : 0.5;
+  });
+  const currentKey = monthKey(toDMY(new Date()));
+  if(!byMonth[currentKey]) byMonth[currentKey] = 0;
+  const keys = Object.keys(byMonth).sort();
+  document.getElementById('work-month-body').innerHTML = keys.map(k=>{
+    const faltas = byMonth[k];
+    const desconto = faltas * dailyRate;
+    const receberia = (w.salary||0) + (w.subsidy||0) - desconto;
+    return `<tr><td>${monthName(k)}</td><td>${faltas}</td><td class="p">-${desconto.toFixed(2)}€</td><td class="g">${receberia.toFixed(2)}€</td></tr>`;
+  }).join('');
+
+  const list = document.getElementById('absence-list');
+  const sorted = [...w.absences].sort((a,b)=>parseDMY(b.date)-parseDMY(a.date));
+  const periodLabel = {full:'dia todo', morning:'manhã', afternoon:'tarde'};
+  list.innerHTML = sorted.length ? sorted.map(a=>{
+    const idx = w.absences.indexOf(a);
+    const frac = (a.period==='full' || !a.period) ? 1 : 0.5;
+    return `<div class="session-row"><div class="session-main">
+      <span class="session-date">${a.date} · ${weekdayLabel(a.date)}</span>
+      <span style="color:var(--ink-soft);flex:1">${periodLabel[a.period||'full']}${a.note?' — '+a.note:''}</span>
+      <span class="session-value" style="color:var(--red)">-${(dailyRate*frac).toFixed(2)}€</span>
+      <button class="icon-btn" onclick="deleteAbsence(${idx})" title="Remover">✕</button>
+    </div></div>`;
+  }).join('') : '<div class="empty">Sem faltas registadas.</div>';
+
+  const vlist = document.getElementById('vacation-list');
+  const vsorted = [...w.vacations].sort((a,b)=>parseDMY(b.date)-parseDMY(a.date));
+  vlist.innerHTML = vsorted.length ? vsorted.map(a=>{
+    const idx = w.vacations.indexOf(a);
+    return `<div class="session-row"><div class="session-main">
+      <span class="session-date">${a.date} · ${weekdayLabel(a.date)}</span>
+      <span style="color:var(--ink-soft);flex:1">${a.note||'férias'}</span>
+      <span class="session-value" style="color:var(--teal)">férias</span>
+      <button class="icon-btn" onclick="deleteVacation(${idx})" title="Remover">✕</button>
+    </div></div>`;
+  }).join('') : '';
+
+  renderWorkCalendar();
+}
+
+function showTab(tab){
+  document.getElementById('tab-courses').style.display = tab==='courses' ? 'block' : 'none';
+  document.getElementById('tab-work').style.display = tab==='work' ? 'block' : 'none';
+  document.querySelectorAll('.page-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+}
+
+async function updateWorkField(field, value){
+  state.work[field] = parseFloat(value)||0;
+  renderWork(); await saveState();
+}
+function toggleAddAbsence(){
+  document.getElementById('add-absence-inline').classList.toggle('open');
+}
+async function confirmAddAbsence(){
+  const dateV = document.getElementById('absence-date').value;
+  if(!dateV) return;
+  const [y,m,d] = dateV.split('-');
+  const dmy = `${d}/${m}/${y}`;
+  const note = document.getElementById('absence-note').value.trim();
+  const period = document.getElementById('absence-period').value;
+  state.work.absences.push({date:dmy, note, period});
+  document.getElementById('absence-date').value='';
+  document.getElementById('absence-note').value='';
+  document.getElementById('absence-period').value='full';
+  document.getElementById('add-absence-inline').classList.remove('open');
+  renderWork(); await saveState();
+}
+async function deleteAbsence(idx){
+  state.work.absences.splice(idx,1);
+  renderWork(); await saveState();
+}
+
+function toggleAddVacation(){
+  document.getElementById('add-vacation-inline').classList.toggle('open');
+}
+async function confirmAddVacation(){
+  const dateV = document.getElementById('vacation-date').value;
+  if(!dateV) return;
+  const [y,m,d] = dateV.split('-');
+  const dmy = `${d}/${m}/${y}`;
+  const note = document.getElementById('vacation-note').value.trim();
+  state.work.vacations.push({date:dmy, note});
+  document.getElementById('vacation-date').value='';
+  document.getElementById('vacation-note').value='';
+  document.getElementById('add-vacation-inline').classList.remove('open');
+  renderWork(); await saveState();
+}
+async function deleteVacation(idx){
+  state.work.vacations.splice(idx,1);
+  renderWork(); await saveState();
+}
+
+function initWorkCalendarDate(){
+  const today = new Date();
+  workCalYear = today.getFullYear(); workCalMonth = today.getMonth();
+}
+function changeWorkCalMonth(delta){
+  workCalMonth += delta;
+  if(workCalMonth < 0){ workCalMonth = 11; workCalYear--; }
+  if(workCalMonth > 11){ workCalMonth = 0; workCalYear++; }
+  renderWorkCalendar();
+}
+function renderWorkCalendar(){
+  document.getElementById('work-calendar-label').textContent = MONTH_NAMES[workCalMonth] + ' ' + workCalYear;
+  const firstDow = (new Date(workCalYear, workCalMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(workCalYear, workCalMonth+1, 0).getDate();
+  const today = new Date();
+  const absenceSet = new Set(state.work.absences.map(a=>a.date));
+  const vacationSet = new Set(state.work.vacations.map(a=>a.date));
+  let html = '';
+  for(let i=0;i<firstDow;i++) html += '<div></div>';
+  const monthHolidays = [];
+  for(let day=1; day<=daysInMonth; day++){
+    const d = new Date(workCalYear, workCalMonth, day);
+    const dmy = toDMY(d);
+    const isToday = today.getFullYear()===workCalYear && today.getMonth()===workCalMonth && today.getDate()===day;
+    const isWeekend = (d.getDay()===0 || d.getDay()===6);
+    const holidayName = HOLIDAY_MAP[dmy];
+    if(holidayName) monthHolidays.push({date:dmy, name:holidayName});
+    let dots = '';
+    if(absenceSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--red)"></span>`;
+    if(vacationSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--teal)"></span>`;
+    if(holidayName) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></span>`;
+    const bg = holidayName ? 'var(--amber)14' : (isWeekend ? 'rgba(0,0,0,.02)' : 'transparent');
+    const numColor = isWeekend ? 'var(--ink-soft)' : 'var(--ink)';
+    html += `<div class="cal-day ${isToday?'today':''}" style="background:${bg}" title="${holidayName||''}"><div class="num" style="color:${numColor}">${day}</div><div class="cal-dots">${dots}</div></div>`;
+  }
+  document.getElementById('work-calendar-grid').innerHTML = html;
+  const holidayList = document.getElementById('work-holiday-list');
+  holidayList.innerHTML = monthHolidays.length
+    ? '<p class="hint" style="margin-bottom:6px">Feriados este mês: ' + monthHolidays.map(h=>`${h.date} — ${h.name}`).join(' · ') + '</p>'
+    : '';
+}
+document.getElementById('work-salary').addEventListener('change', e=>updateWorkField('salary', e.target.value));
+document.getElementById('work-subsidy').addEventListener('change', e=>updateWorkField('subsidy', e.target.value));
+document.getElementById('work-divisor').addEventListener('change', e=>updateWorkField('divisor', e.target.value));
 
 function sessionRow(course, s, i){
   const detailKey = course.id+'-'+i;
@@ -537,6 +792,7 @@ function render(){
   renderConflicts();
   renderMonthTable();
   renderCalendar();
+  renderWork();
 }
 
 function toggleCourse(id){ state.courses.find(c=>c.id===id).open ^= true; render(); }
@@ -738,6 +994,54 @@ document.getElementById('add-btn').addEventListener('click', async ()=>{
   document.querySelectorAll('.wd-chip').forEach(c=>c.classList.remove('sel'));
 });
 
+function pad2(n){ return String(n).padStart(2,'0'); }
+function icsDateTime(dateStr, hh, mm){
+  const d = parseDMY(dateStr);
+  return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}T${pad2(hh)}${pad2(mm)}00`;
+}
+function escapeICS(str){
+  return String(str).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+}
+function buildICS(){
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Gestor de Cursos//PT'];
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  state.courses.forEach(c=>{
+    c.sessions.forEach(s=>{
+      const d = parseDMY(s.date);
+      if(d < todayStart) return;
+      const range = parseTimeRange(s.time);
+      let startH=19, startM=0, endH=22, endM=0;
+      if(range){ startH=Math.floor(range.start/60); startM=range.start%60; endH=Math.floor(range.end/60); endM=range.end%60; }
+      const uid = c.id+'-'+s.date.replace(/\//g,'')+'@gestor-cursos';
+      lines.push('BEGIN:VEVENT');
+      lines.push('UID:'+uid);
+      lines.push('DTSTART:'+icsDateTime(s.date,startH,startM));
+      lines.push('DTEND:'+icsDateTime(s.date,endH,endM));
+      lines.push('SUMMARY:'+escapeICS(c.name));
+      let desc = s.note||'';
+      if(s.link) desc += (desc?'\\n':'')+'Link: '+s.link;
+      if(desc) lines.push('DESCRIPTION:'+escapeICS(desc));
+      if(s.link) lines.push('URL:'+s.link);
+      lines.push('BEGIN:VALARM');
+      lines.push('TRIGGER:-PT15M');
+      lines.push('ACTION:DISPLAY');
+      lines.push('DESCRIPTION:Lembrete');
+      lines.push('END:VALARM');
+      lines.push('END:VEVENT');
+    });
+  });
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+document.getElementById('ics-btn').addEventListener('click', ()=>{
+  const ics = buildICS();
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'aulas.ics'; a.click();
+  URL.revokeObjectURL(url);
+});
+
 document.getElementById('export-btn').addEventListener('click', ()=>{
   const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -768,6 +1072,7 @@ document.getElementById('file-input').addEventListener('change', (e)=>{
   await loadState();
   state.courses.forEach(sortSessions);
   initCalendarDate();
+  initWorkCalendarDate();
   render();
 })();
 </script>
