@@ -203,6 +203,11 @@
   <div class="layout">
   <div class="main-col">
 
+  <div class="cal-nav" style="padding-left:0;padding-bottom:10px">
+    <button onclick="changeSummaryMonth(-1)">‹</button>
+    <span class="cal-label" id="summary-label"></span>
+    <button onclick="changeSummaryMonth(1)">›</button>
+  </div>
   <div class="summary">
     <div class="stat ganho"><div class="label">Ganho (presenças)</div><div class="val" id="stat-ganho">0€</div></div>
     <div class="stat perdido"><div class="label">Perdido (faltas)</div><div class="val" id="stat-perdido">0€</div></div>
@@ -407,13 +412,8 @@ HOLIDAYS.forEach(h => HOLIDAY_MAP[h.date] = h.name);
 let workCalYear, workCalMonth;
 
 const seedData = [
-  {name:"Programar com sistemas de Inteligência Artificial", value:6, time:"19:00-22:00", dates:["17/09/2026","24/09/2026","01/10/2026","08/10/2026","15/10/2026"]},
-  {name:"Desenvolver aplicações móveis (Android)", value:6, time:"19:00-23:00", dates:["18/09/2026","23/09/2026","25/09/2026","30/09/2026","02/10/2026","07/10/2026","09/10/2026","14/10/2026","16/10/2026","21/10/2026","23/10/2026","28/10/2026","30/10/2026"]},
-  {name:"Programar com sistemas de IA (no-code)", value:6, time:"19:00-22:00", dates:["22/10/2026","29/10/2026","05/11/2026","12/11/2026","19/11/2026"]},
-  {name:"Utilizar serviços Git e GitHub", value:6, time:"19:00-23:00", dates:["04/11/2026","06/11/2026","11/11/2026","13/11/2026","18/11/2026","20/11/2026","25/11/2026"]},
   {name:"UC01480 - Analisar evidências de ataques cibernéticos", value:6, time:"19:45-22:45", dates:["02/09/2026","07/09/2026","09/09/2026","14/09/2026","16/09/2026","21/09/2026","23/09/2026","28/09/2026","30/09/2026","07/10/2026","12/10/2026","14/10/2026","19/10/2026","21/10/2026","26/10/2026"]},
-  {name:"CCNA 2: Switching, Routing and Wireless Essentials", value:6, time:"19:00-23:00", dates:["22/09/2026","24/09/2026","29/09/2026","01/10/2026","06/10/2026","08/10/2026","13/10/2026","15/10/2026","20/10/2026","22/10/2026","27/10/2026","29/10/2026","03/11/2026","05/11/2026","10/11/2026","12/11/2026","17/11/2026","19/11/2026","24/11/2026"]},
-  {name:"Cybersecurity & Cloud Security Technician", value:6, time:"19:00-23:00", dates:[]}
+  {name:"Cybersecurity & Cloud Security Technician", value:6, time:"19:00-23:00", dates:["21/09/2026","22/09/2026","23/09/2026","24/09/2026","27/09/2026","28/09/2026","29/09/2026","01/10/2026","06/10/2026","07/10/2026","08/10/2026","12/10/2026","13/10/2026","14/10/2026","15/10/2026","19/10/2026","20/10/2026","21/10/2026","22/10/2026","26/10/2026","27/10/2026","28/10/2026","29/10/2026","02/11/2026","03/11/2026","04/11/2026","05/11/2026","09/11/2026","10/11/2026","11/11/2026","12/11/2026","16/11/2026","17/11/2026","18/11/2026","19/11/2026","23/11/2026","24/11/2026","25/11/2026","26/11/2026","02/12/2026","03/12/2026","09/12/2026","10/12/2026","14/12/2026","15/12/2026","04/01/2027","05/01/2027","06/01/2027","07/01/2027","11/01/2027","12/01/2027","13/01/2027","14/01/2027","18/01/2027","19/01/2027","20/01/2027","21/01/2027","25/01/2027","26/01/2027","27/01/2027","28/01/2027","01/02/2027","02/02/2027","03/02/2027","04/02/2027","09/02/2027","10/02/2027","15/02/2027","16/02/2027","17/02/2027","18/02/2027","22/02/2027","23/02/2027","24/02/2027","25/02/2027","01/03/2027","02/03/2027","03/03/2027","04/03/2027","08/03/2027","09/03/2027","10/03/2027","11/03/2027","15/03/2027","16/03/2027","17/03/2027","18/03/2027","22/03/2027","23/03/2027","24/03/2027","25/03/2027","29/03/2027","30/03/2027","31/03/2027","01/04/2027","05/04/2027","06/04/2027","07/04/2027","08/04/2027","12/04/2027"]}
 ];
 
 function makeCourse(name, value, dates, time){
@@ -423,6 +423,17 @@ function makeCourse(name, value, dates, time){
     sessions: dates.map(d => ({date:d, status:'pending', time: time||'', link:'', note:''})),
     open:false, completed:false
   };
+}
+
+function seedCourse(c){
+  const course = makeCourse(c.name, c.value, c.dates, c.time);
+  if(c.name.indexOf('UC01480')===0){
+    ['14/09/2026','16/09/2026','21/09/2026','23/09/2026','28/09/2026'].forEach(d=>{
+      const sess = course.sessions.find(x=>x.date===d);
+      if(sess) sess.time='19:00-23:00';
+    });
+  }
+  return course;
 }
 
 async function loadState(){
@@ -446,7 +457,7 @@ async function loadState(){
       return;
     }
   }catch(e){}
-  state = { courses: seedData.map(c => makeCourse(c.name, c.value, c.dates, c.time)), work: { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] } };
+  state = { courses: seedData.map(seedCourse), work: { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] } };
   await saveState();
 }
 
@@ -530,9 +541,10 @@ function renderMonthTable(){
   const keys = Object.keys(totals).sort();
   const body = document.getElementById('month-body');
   if(keys.length===0){ body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Sem sessões ainda.</td></tr>'; return; }
+  const sum = keys.reduce((a,k)=>({g:a.g+totals[k].g,p:a.p+totals[k].p,pd:a.pd+totals[k].pd}),{g:0,p:0,pd:0});
   body.innerHTML = keys.map(k => `
     <tr><td>${monthName(k)}</td><td class="g">+${totals[k].g.toFixed(2)}€</td><td class="p">-${totals[k].p.toFixed(2)}€</td><td class="pd">${totals[k].pd.toFixed(2)}€</td></tr>
-  `).join('');
+  `).join('') + `<tr style="font-weight:600"><td>Total</td><td class="g">+${sum.g.toFixed(2)}€</td><td class="p">-${sum.p.toFixed(2)}€</td><td class="pd">${sum.pd.toFixed(2)}€</td></tr>`;
 }
 
 function renderWork(){
@@ -769,10 +781,31 @@ function courseCard(course){
   </div>`;
 }
 
+let summaryMonth = null;
+function initSummaryMonth(){
+  const keys = new Set();
+  state.courses.forEach(c=>c.sessions.forEach(s=>keys.add(monthKey(s.date))));
+  const now = monthKey(toDMY(new Date()));
+  if(keys.has(now)){ summaryMonth = now; return; }
+  const sorted = [...keys].sort();
+  summaryMonth = sorted[0] || now;
+}
+function changeSummaryMonth(delta){
+  let [y,m] = summaryMonth.split('-').map(Number);
+  m += delta;
+  if(m<1){ m=12; y--; }
+  if(m>12){ m=1; y++; }
+  summaryMonth = y+'-'+String(m).padStart(2,'0');
+  render();
+}
+
 function render(){
   let ganho=0, perdido=0, pendente=0;
+  if(!summaryMonth) initSummaryMonth();
+  document.getElementById('summary-label').textContent = monthName(summaryMonth);
   state.courses.forEach(course=>{
     course.sessions.forEach(s=>{
+      if(monthKey(s.date)!==summaryMonth) return;
       if(s.status==='present') ganho += course.value;
       else if(s.status==='absent') perdido += course.value;
       else pendente += course.value;
