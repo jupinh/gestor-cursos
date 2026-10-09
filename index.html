@@ -726,12 +726,22 @@ function courseColor(id){
   const idx = state.courses.findIndex(c=>c.id===id);
   return PALETTE[idx % PALETTE.length];
 }
+const ABSENCE_LIMIT = 0.10;
 function courseCard(course){
   let cGanho=0, cPerdido=0;
   course.sessions.forEach(s=>{
     if(s.status==='present') cGanho += course.value;
     else if(s.status==='absent') cPerdido += course.value;
   });
+  const total = course.sessions.length;
+  const nAbsent = course.sessions.filter(s=>s.status==='absent').length;
+  const pct = total ? (nAbsent/total*100) : 0;
+  const maxAbsent = Math.floor(total*ABSENCE_LIMIT);
+  let faltaColor = 'var(--ink-soft)', faltaMsg = '';
+  if(nAbsent > maxAbsent){ faltaColor = 'var(--red)'; faltaMsg = ' · limite ultrapassado'; }
+  else if(maxAbsent > 0 && nAbsent === maxAbsent){ faltaColor = 'var(--amber)'; faltaMsg = ' · no limite'; }
+  const faltasHtml = total ? `<div class="course-meta" style="color:${faltaColor}">Faltas: ${nAbsent} de ${total} (${pct.toFixed(1).replace('.',',')}%) · máx. ${maxAbsent} (10%)${faltaMsg}</div>
+        <div style="height:3px;background:var(--border);margin-top:6px;max-width:220px"><div style="height:3px;width:${Math.min(100,pct/(ABSENCE_LIMIT*100)*100)}%;background:${nAbsent>maxAbsent?'var(--red)':(nAbsent===maxAbsent&&maxAbsent>0?'var(--amber)':'var(--teal)')}"></div></div>` : '';
   const sessionsHtml = course.sessions.map((s,i) => sessionRow(course, s, i)).join('') || '<div class="empty">Sem sessões — adiciona datas para este curso.</div>';
   const addOpen = !!openAddSession[course.id];
   const genOpen = !!openGenSessions[course.id];
@@ -741,6 +751,7 @@ function courseCard(course){
       <div>
         <div class="course-title">${course.name}</div>
         <div class="course-meta">${course.sessions.length} sessões · <button class="edit-value" onclick="event.stopPropagation(); editValue('${course.id}')">${course.value.toFixed(2)}€/dia</button></div>
+        ${faltasHtml}
       </div>
       <div class="course-right">
         <span style="color:var(--teal)">+${cGanho.toFixed(2)}€</span>
