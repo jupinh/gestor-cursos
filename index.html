@@ -254,11 +254,17 @@
   <div id="tab-work" style="display:none">
     <h2 class="section-title" style="margin-top:0">Assiduidade e vencimento</h2>
     <div class="row" style="margin-bottom:16px">
-      <div class="field"><label>Salário base mensal (€)</label><input type="number" id="work-salary" step="1" min="0"></div>
-      <div class="field"><label>Subsídio de alimentação mensal (€)</label><input type="number" id="work-subsidy" step="1" min="0"></div>
-      <div class="field"><label>Dias úteis considerados</label><input type="number" id="work-divisor" step="1" min="1"></div>
+      <div class="field"><label>Vencimento base (€)</label><input type="number" id="work-salary" step="0.01" min="0"></div>
+      <div class="field"><label>Ganho por hora (€)</label><input type="number" id="work-hourly" step="0.01" min="0"></div>
+      <div class="field"><label>Horas por dia</label><input type="number" id="work-hours" step="0.25" min="0"></div>
+      <div class="field"><label>Subsídio de alimentação por dia (€)</label><input type="number" id="work-subsidy" step="0.01" min="0"></div>
     </div>
-    <p class="hint" style="margin-bottom:20px">Horário de referência: Segunda a Sexta, 9h20–17h30. Cada falta desconta salário e subsídio proporcionalmente aos dias úteis definidos acima.</p>
+    <div class="row" style="margin-bottom:16px">
+      <div class="field"><label>Subs. férias — duodécimos (€)</label><input type="number" id="work-ferias" step="0.01" min="0"></div>
+      <div class="field"><label>Subs. Natal — duodécimos (€)</label><input type="number" id="work-natal" step="0.01" min="0"></div>
+      <div class="field"><label>Segurança Social (%)</label><input type="number" id="work-ss" step="0.1" min="0"></div>
+    </div>
+    <p class="hint" style="margin-bottom:20px">Horário de referência: Segunda a Sexta, 9h20–17h30. Valores do recibo de vencimento: o vencimento base é mensal, o subsídio de alimentação é pago só nos dias trabalhados (segunda a sexta, sem feriados nem férias) e a Segurança Social incide sobre vencimento + duodécimos. A tabela mostra o líquido estimado. Cada falta desconta as horas não trabalhadas e o subsídio desse dia (meio dia = metade). Ausências com atestado médico podem ser registadas como "Com atestado" e não descontam, como aconteceu no teu recibo de setembro.</p>
 
     <div class="cal-nav" style="padding-left:0">
       <button onclick="changeWorkCalMonth(-1)">‹</button>
@@ -274,11 +280,12 @@
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block"></span>Falta</span>
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block"></span>Férias</span>
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block"></span>Feriado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:#7F77DD;display:inline-block"></span>Atestado</span>
     </div>
     <div id="work-holiday-list" style="margin-bottom:20px"></div>
 
     <table class="month-table" id="work-month-table"><thead>
-      <tr><th>Mês</th><th>Faltas</th><th>Desconto</th><th>Receberia</th></tr>
+      <tr><th>Mês</th><th>Dias c/ subsídio</th><th>Faltas</th><th>Desconto</th><th>Líquido</th></tr>
     </thead><tbody id="work-month-body"></tbody></table>
 
     <div style="margin-top:18px;display:flex;gap:20px;flex-wrap:wrap">
@@ -287,6 +294,10 @@
     </div>
     <div class="add-session-inline" id="add-absence-inline">
       <input type="date" class="as-date" id="absence-date">
+      <select id="absence-type" style="border:none;border-bottom:1px solid var(--border);padding:5px 0;font-size:12.5px;background:transparent;color:var(--ink)">
+        <option value="unpaid">Falta (desconta)</option>
+        <option value="medical">Com atestado médico (não desconta)</option>
+      </select>
       <select id="absence-period" style="border:none;border-bottom:1px solid var(--border);padding:5px 0;font-size:12.5px;background:transparent;color:var(--ink)">
         <option value="full">Dia todo</option>
         <option value="morning">Manhã</option>
@@ -365,7 +376,7 @@ async function storageSet(key, value){
   return true;
 }
 
-let state = { courses: [], work: { salary: 910, subsidy: 140, divisor: 22, absences: [], vacations: [] } };
+let state = { courses: [], work: { salary: 920, hourly: 5.31, hoursPerDay: 8, subsFerias: 76.03, subsNatal: 75.62, ssPct: 11, subsidyDay: 7.63, divisor: 22, absences: [], vacations: [] } };
 let mode = 'manual';
 let selectedWeekdays = new Set();
 let openDetails = {}; // sessionKey -> bool, for link/note panel
@@ -450,14 +461,21 @@ async function loadState(){
           if(s.note===undefined) s.note='';
         });
       });
-      if(!state.work) state.work = { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] };
-      if(state.work.subsidy===undefined) state.work.subsidy = 140;
+      if(!state.work) state.work = { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[] };
+      if(state.work.hourly===undefined) state.work.hourly = 5.31;
+      if(state.work.hoursPerDay===undefined) state.work.hoursPerDay = 8;
+      if(!state.work.salary) state.work.salary = 920;
+      if(state.work.subsFerias===undefined) state.work.subsFerias = 76.03;
+      if(state.work.subsNatal===undefined) state.work.subsNatal = 75.62;
+      if(state.work.ssPct===undefined) state.work.ssPct = 11;
+      if(state.work.salary===910) state.work.salary = 920;
+      if(state.work.subsidyDay===undefined) state.work.subsidyDay = 7.63;
       if(state.work.vacations===undefined) state.work.vacations = [];
       state.work.absences.forEach(a=>{ if(a.period===undefined) a.period='full'; });
       return;
     }
   }catch(e){}
-  state = { courses: seedData.map(seedCourse), work: { salary:910, subsidy:140, divisor:22, absences:[], vacations:[] } };
+  state = { courses: seedData.map(seedCourse), work: { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[] } };
   await saveState();
 }
 
@@ -547,27 +565,70 @@ function renderMonthTable(){
   `).join('') + `<tr style="font-weight:600"><td>Total</td><td class="g">+${sum.g.toFixed(2)}€</td><td class="p">-${sum.p.toFixed(2)}€</td><td class="pd">${sum.pd.toFixed(2)}€</td></tr>`;
 }
 
+function workDaysInMonth(key){
+  const [y,m] = key.split('-').map(Number);
+  const n = new Date(y, m, 0).getDate();
+  const vac = new Set(state.work.vacations.map(v=>v.date));
+  let paid = 0, sub = 0;
+  for(let d=1; d<=n; d++){
+    const dt = new Date(y, m-1, d);
+    const dow = dt.getDay();
+    if(dow===0 || dow===6) continue;
+    const dmy = toDMY(dt);
+    const h = HOLIDAY_MAP[dmy];
+    if(h && h.indexOf('facultativo')===-1) continue;
+    paid++;
+    if(!vac.has(dmy)) sub++;
+  }
+  return {paid, sub};
+}
+
+// o recibo usa o valor hora exato (vencimento x 12 / (52 x horas semanais)); 5,31 é o arredondado
+function hourlyEff(w){
+  const exact = (w.salary||0)*12/(52*(w.hoursPerDay||0)*5);
+  return Math.abs((w.hourly||0) - exact) < 0.005 ? exact : (w.hourly||0);
+}
+
 function renderWork(){
   const w = state.work;
   document.getElementById('work-salary').value = w.salary || '';
-  document.getElementById('work-subsidy').value = w.subsidy || '';
-  document.getElementById('work-divisor').value = w.divisor || 22;
+  document.getElementById('work-ferias').value = w.subsFerias || '';
+  document.getElementById('work-natal').value = w.subsNatal || '';
+  document.getElementById('work-ss').value = w.ssPct || '';
+  document.getElementById('work-subsidy').value = w.subsidyDay || '';
+  document.getElementById('work-hourly').value = w.hourly || '';
+  document.getElementById('work-hours').value = w.hoursPerDay || '';
 
-  const dailyRate = w.divisor>0 ? ((w.salary + w.subsidy) / w.divisor) : 0;
-  const byMonth = {};
+  const hEff = hourlyEff(w);
+  const dailyRate = hEff*(w.hoursPerDay||0) + (w.subsidyDay||0);
+  const selKey = workCalYear+'-'+String(workCalMonth+1).padStart(2,'0');
+  const faltasBy = {}, medBy = {};
   w.absences.forEach(a => {
     const key = monthKey(a.date);
-    if(!byMonth[key]) byMonth[key] = 0;
-    byMonth[key] += (a.period==='full' || !a.period) ? 1 : 0.5;
+    const f = (a.period==='full' || !a.period) ? 1 : 0.5;
+    if(a.type==='medical'){
+      medBy[key] = (medBy[key]||0) + f;
+      if(faltasBy[key]===undefined) faltasBy[key] = 0;
+    } else {
+      faltasBy[key] = (faltasBy[key]||0) + f;
+    }
   });
   const currentKey = monthKey(toDMY(new Date()));
-  if(!byMonth[currentKey]) byMonth[currentKey] = 0;
-  const keys = Object.keys(byMonth).sort();
+  if(faltasBy[currentKey]===undefined) faltasBy[currentKey] = 0;
+  if(faltasBy[selKey]===undefined) faltasBy[selKey] = 0;
+  const keys = Object.keys(faltasBy).sort();
   document.getElementById('work-month-body').innerHTML = keys.map(k=>{
-    const faltas = byMonth[k];
+    const faltas = faltasBy[k];
+    const med = medBy[k] || 0;
     const desconto = faltas * dailyRate;
-    const receberia = (w.salary||0) + (w.subsidy||0) - desconto;
-    return `<tr><td>${monthName(k)}</td><td>${faltas}</td><td class="p">-${desconto.toFixed(2)}€</td><td class="g">${receberia.toFixed(2)}€</td></tr>`;
+    const dd = workDaysInMonth(k);
+    const descSalario = faltas * hEff * (w.hoursPerDay||0);
+    const baseSS = (w.salary||0) - descSalario + (w.subsFerias||0) + (w.subsNatal||0);
+    const ss = baseSS * (w.ssPct||0) / 100;
+    const receberia = baseSS + (w.subsidyDay||0)*dd.sub - faltas*(w.subsidyDay||0) - ss;
+    const rowStyle = (k===selKey) ? ' style="background:rgba(0,0,0,.035);font-weight:600"' : '';
+    const medTxt = med ? ` <span style="color:var(--ink-soft);font-size:11.5px;font-weight:400">+ ${med} c/ atestado</span>` : '';
+    return `<tr${rowStyle}><td>${monthName(k)}</td><td>${dd.sub}</td><td>${faltas}${medTxt}</td><td class="p">-${desconto.toFixed(2)}€</td><td class="g">${receberia.toFixed(2)}€</td></tr>`;
   }).join('');
 
   const list = document.getElementById('absence-list');
@@ -576,10 +637,11 @@ function renderWork(){
   list.innerHTML = sorted.length ? sorted.map(a=>{
     const idx = w.absences.indexOf(a);
     const frac = (a.period==='full' || !a.period) ? 1 : 0.5;
+    const isMed = a.type==='medical';
     return `<div class="session-row"><div class="session-main">
       <span class="session-date">${a.date} · ${weekdayLabel(a.date)}</span>
-      <span style="color:var(--ink-soft);flex:1">${periodLabel[a.period||'full']}${a.note?' — '+a.note:''}</span>
-      <span class="session-value" style="color:var(--red)">-${(dailyRate*frac).toFixed(2)}€</span>
+      <span style="color:var(--ink-soft);flex:1">${periodLabel[a.period||'full']}${isMed?' · atestado (sem desconto)':''}${a.note?' — '+a.note:''}</span>
+      <span class="session-value" style="color:${isMed?'var(--ink-soft)':'var(--red)'}">${isMed?'0.00':'-'+(dailyRate*frac).toFixed(2)}€</span>
       <button class="icon-btn" onclick="deleteAbsence(${idx})" title="Remover">✕</button>
     </div></div>`;
   }).join('') : '<div class="empty">Sem faltas registadas.</div>';
@@ -619,10 +681,12 @@ async function confirmAddAbsence(){
   const dmy = `${d}/${m}/${y}`;
   const note = document.getElementById('absence-note').value.trim();
   const period = document.getElementById('absence-period').value;
-  state.work.absences.push({date:dmy, note, period});
+  const type = document.getElementById('absence-type').value;
+  state.work.absences.push({date:dmy, note, period, type});
   document.getElementById('absence-date').value='';
   document.getElementById('absence-note').value='';
   document.getElementById('absence-period').value='full';
+  document.getElementById('absence-type').value='unpaid';
   document.getElementById('add-absence-inline').classList.remove('open');
   renderWork(); await saveState();
 }
@@ -659,14 +723,15 @@ function changeWorkCalMonth(delta){
   workCalMonth += delta;
   if(workCalMonth < 0){ workCalMonth = 11; workCalYear--; }
   if(workCalMonth > 11){ workCalMonth = 0; workCalYear++; }
-  renderWorkCalendar();
+  renderWork();
 }
 function renderWorkCalendar(){
   document.getElementById('work-calendar-label').textContent = MONTH_NAMES[workCalMonth] + ' ' + workCalYear;
   const firstDow = (new Date(workCalYear, workCalMonth, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(workCalYear, workCalMonth+1, 0).getDate();
   const today = new Date();
-  const absenceSet = new Set(state.work.absences.map(a=>a.date));
+  const absenceSet = new Set(state.work.absences.filter(a=>a.type!=='medical').map(a=>a.date));
+  const medicalSet = new Set(state.work.absences.filter(a=>a.type==='medical').map(a=>a.date));
   const vacationSet = new Set(state.work.vacations.map(a=>a.date));
   let html = '';
   for(let i=0;i<firstDow;i++) html += '<div></div>';
@@ -679,6 +744,7 @@ function renderWorkCalendar(){
     const holidayName = HOLIDAY_MAP[dmy];
     if(holidayName) monthHolidays.push({date:dmy, name:holidayName});
     let dots = '';
+    if(medicalSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:#7F77DD"></span>`;
     if(absenceSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--red)"></span>`;
     if(vacationSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--teal)"></span>`;
     if(holidayName) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></span>`;
@@ -692,9 +758,13 @@ function renderWorkCalendar(){
     ? '<p class="hint" style="margin-bottom:6px">Feriados este mês: ' + monthHolidays.map(h=>`${h.date} — ${h.name}`).join(' · ') + '</p>'
     : '';
 }
+document.getElementById('work-subsidy').addEventListener('change', e=>updateWorkField('subsidyDay', e.target.value));
 document.getElementById('work-salary').addEventListener('change', e=>updateWorkField('salary', e.target.value));
-document.getElementById('work-subsidy').addEventListener('change', e=>updateWorkField('subsidy', e.target.value));
-document.getElementById('work-divisor').addEventListener('change', e=>updateWorkField('divisor', e.target.value));
+document.getElementById('work-ferias').addEventListener('change', e=>updateWorkField('subsFerias', e.target.value));
+document.getElementById('work-natal').addEventListener('change', e=>updateWorkField('subsNatal', e.target.value));
+document.getElementById('work-ss').addEventListener('change', e=>updateWorkField('ssPct', e.target.value));
+document.getElementById('work-hourly').addEventListener('change', e=>updateWorkField('hourly', e.target.value));
+document.getElementById('work-hours').addEventListener('change', e=>updateWorkField('hoursPerDay', e.target.value));
 
 function sessionRow(course, s, i){
   const detailKey = course.id+'-'+i;
@@ -1113,6 +1183,7 @@ document.getElementById('file-input').addEventListener('change', (e)=>{
 });
 
 (async ()=>{
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
   await loadState();
   state.courses.forEach(sortSessions);
   initCalendarDate();
