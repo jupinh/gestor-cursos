@@ -13,6 +13,7 @@
     --teal:#33475A; --teal-bg:transparent;
     --red:#8B4B3C; --red-bg:transparent;
     --amber:#8A6B2E; --amber-bg:transparent;
+    --gain:#1E7B4B; --loss:#C23B2E; --pend:#C77700;
     --radius:3px;
   }
   *{box-sizing:border-box}
@@ -46,10 +47,10 @@
   .summary{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid var(--border);align-items:center}
   .stat{position:relative;padding-left:16px}
   .stat:before{content:'';position:absolute;left:0;top:6px;width:9px;height:9px;border-radius:2px}
-  .stat.ganho:before{background:var(--teal)} .stat.perdido:before{background:var(--red)} .stat.pendente:before{background:var(--amber)}
+  .stat.ganho:before{background:var(--gain)} .stat.perdido:before{background:var(--loss)} .stat.pendente:before{background:var(--pend)}
   .stat .label{font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;text-transform:none}
   .stat .val{font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:21px}
-  .stat.ganho .val{color:var(--teal)} .stat.perdido .val{color:var(--red)} .stat.pendente .val{color:var(--amber)}
+  .stat.ganho .val{color:var(--gain)} .stat.perdido .val{color:var(--loss)} .stat.pendente .val{color:var(--pend)}
 
   details.section{border-bottom:1px solid var(--border);margin-bottom:0;padding:0}
   details.section summary{cursor:pointer;padding:14px 0;font-weight:500;font-size:13.5px;list-style:none;color:var(--ink)}
@@ -61,9 +62,9 @@
   .month-table th,.month-table td{padding:7px 0;text-align:right;border-top:1px solid var(--border)}
   .month-table th:first-child,.month-table td:first-child{text-align:left}
   .month-table th{color:var(--ink-soft);font-weight:500;font-size:11.5px}
-  .month-table td.g{color:var(--teal);font-family:'IBM Plex Mono',monospace}
-  .month-table td.p{color:var(--red);font-family:'IBM Plex Mono',monospace}
-  .month-table td.pd{color:var(--amber);font-family:'IBM Plex Mono',monospace}
+  .month-table td.g{color:var(--gain);font-family:'IBM Plex Mono',monospace}
+  .month-table td.p{color:var(--loss);font-family:'IBM Plex Mono',monospace}
+  .month-table td.pd{color:var(--pend);font-family:'IBM Plex Mono',monospace}
 
   .conflict-details summary{color:var(--red)}
   .conflict-box{padding:2px 0 4px}
@@ -89,8 +90,9 @@
   .session-date{width:140px;flex-shrink:0;color:var(--ink-soft)}
   .status-btns{display:flex;gap:6px;margin-left:auto}
   .sbtn{border:1px solid var(--border);background:transparent;padding:3px 9px;border-radius:999px;font-size:11.5px;cursor:pointer;color:var(--ink-soft)}
-  .sbtn.active-present{background:var(--teal);border-color:var(--teal);color:var(--bg)}
-  .sbtn.active-absent{background:var(--red);border-color:var(--red);color:var(--bg)}
+  .sbtn.active-present{background:var(--gain);border-color:var(--gain);color:#fff}
+  .sbtn.active-absent{background:var(--loss);border-color:var(--loss);color:#fff}
+  .sbtn.active-pending{border-color:var(--pend);color:var(--pend);background:transparent}
   .session-value{width:50px;text-align:right;font-family:'IBM Plex Mono',monospace;flex-shrink:0;color:var(--ink-soft)}
   .icon-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:14px;padding:0 2px;flex-shrink:0}
   .icon-btn:hover{color:var(--ink)}
@@ -211,7 +213,7 @@
   <div class="summary">
     <div class="stat ganho"><div class="label">Ganho (presenças)</div><div class="val" id="stat-ganho">0€</div></div>
     <div class="stat perdido"><div class="label">Perdido (faltas)</div><div class="val" id="stat-perdido">0€</div></div>
-    <div class="stat pendente"><div class="label">Por confirmar</div><div class="val" id="stat-pendente">0€</div></div>
+    <div class="stat pendente"><div class="label" title="Aulas ainda sem Presença nem Falta marcada">Por confirmar (pendente)</div><div class="val" id="stat-pendente">0€</div></div>
   </div>
 
   <div id="conflict-slot"></div>
@@ -234,8 +236,9 @@
   <details class="section">
     <summary>Resumo mensal</summary>
     <table class="month-table" id="month-table"><thead>
-      <tr><th>Mês</th><th>Ganho</th><th>Perdido</th><th>Por confirmar</th></tr>
+      <tr><th>Mês</th><th title="Aulas com Presença marcada" style="color:var(--gain)">Ganho</th><th title="Aulas com Falta marcada" style="color:var(--loss)">Perdido</th><th title="Aulas ainda sem Presença nem Falta marcada" style="color:var(--pend)">Por confirmar</th></tr>
     </thead><tbody id="month-body"></tbody></table>
+    <p class="hint" style="margin-top:12px"><b style="color:var(--gain)">Ganho</b> = aulas com Presença · <b style="color:var(--loss)">Perdido</b> = aulas com Falta · <b style="color:var(--pend)">Por confirmar</b> = aulas ainda sem Presença nem Falta marcada (Pendente).</p>
   </details>
 
   <h2 class="section-title">Cursos em curso</h2>
@@ -840,8 +843,8 @@ function courseCard(course){
         ${faltasHtml}
       </div>
       <div class="course-right">
-        <span style="color:var(--teal)">+${cGanho.toFixed(2)}€</span>
-        <span style="color:var(--red)">-${cPerdido.toFixed(2)}€</span>
+        <span style="color:var(--gain)">+${cGanho.toFixed(2)}€</span>
+        <span style="color:var(--loss)">-${cPerdido.toFixed(2)}€</span>
         <button class="complete-btn ${course.completed?'done':''}" onclick="event.stopPropagation(); toggleCompleted('${course.id}')">${course.completed?'Reabrir':'Concluir'}</button>
         <button class="del-course" onclick="event.stopPropagation(); deleteCourse('${course.id}')">Remover</button>
         <span class="chev ${course.open?'open':''}">›</span>
@@ -852,6 +855,7 @@ function courseCard(course){
       <div class="add-session-row">
         <button onclick="toggleAddSession('${course.id}')">+ Adicionar sessão</button>
         <button onclick="toggleGenSessions('${course.id}')" style="margin-left:8px">+ Gerar sessões automaticamente</button>
+        <button onclick="confirmPastPresent('${course.id}')" style="margin-left:8px;color:var(--gain)">✓ Marcar pendentes até hoje como presença</button>
         <div class="add-session-inline ${addOpen?'open':''}" id="add-session-${course.id}">
           <input type="date" class="as-date" id="as-date-${course.id}">
           <input type="text" class="as-time" placeholder="Horário" id="as-time-${course.id}">
@@ -928,6 +932,16 @@ function render(){
 function toggleCourse(id){ state.courses.find(c=>c.id===id).open ^= true; render(); }
 function toggleDetails(key){ openDetails[key] = !openDetails[key]; render(); }
 function toggleAddSession(id){ openAddSession[id] = !openAddSession[id]; render(); }
+async function confirmPastPresent(id){
+  const c = state.courses.find(c=>c.id===id);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todo = c.sessions.filter(s => s.status==='pending' && parseDMY(s.date) <= today);
+  if(!todo.length){ alert('Não há sessões pendentes até hoje neste curso.'); return; }
+  if(!confirm('Marcar '+todo.length+' sessão(ões) pendente(s) deste curso, até hoje, como Presença?')) return;
+  todo.forEach(s => s.status = 'present');
+  c.open = true;
+  render(); await saveState();
+}
 function toggleGenSessions(id){ openGenSessions[id] = !openGenSessions[id]; render(); }
 function genWeekdayClick(id, day, el){
   if(!genWeekdays[id]) genWeekdays[id] = new Set();
