@@ -546,23 +546,39 @@ function renderConflicts(){
 }
 
 function renderMonthTable(){
-  const totals = {};
+  const totals = {};      // mês -> total
+  const byCourse = {};    // mês -> id do curso -> total
   state.courses.forEach(c=>{
     c.sessions.forEach(s=>{
       const key = monthKey(s.date);
       if(!totals[key]) totals[key]={g:0,p:0,pd:0};
-      if(s.status==='present') totals[key].g += c.value;
-      else if(s.status==='absent') totals[key].p += c.value;
-      else totals[key].pd += c.value;
+      if(!byCourse[key]) byCourse[key]={};
+      if(!byCourse[key][c.id]) byCourse[key][c.id]={g:0,p:0,pd:0};
+      const f = s.status==='present' ? 'g' : (s.status==='absent' ? 'p' : 'pd');
+      totals[key][f] += c.value;
+      byCourse[key][c.id][f] += c.value;
     });
   });
   const keys = Object.keys(totals).sort();
   const body = document.getElementById('month-body');
   if(keys.length===0){ body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft)">Sem sessões ainda.</td></tr>'; return; }
   const sum = keys.reduce((a,k)=>({g:a.g+totals[k].g,p:a.p+totals[k].p,pd:a.pd+totals[k].pd}),{g:0,p:0,pd:0});
-  body.innerHTML = keys.map(k => `
-    <tr><td>${monthName(k)}</td><td class="g">+${totals[k].g.toFixed(2)}€</td><td class="p">-${totals[k].p.toFixed(2)}€</td><td class="pd">${totals[k].pd.toFixed(2)}€</td></tr>
-  `).join('') + `<tr style="font-weight:600"><td>Total</td><td class="g">+${sum.g.toFixed(2)}€</td><td class="p">-${sum.p.toFixed(2)}€</td><td class="pd">${sum.pd.toFixed(2)}€</td></tr>`;
+
+  const courseShort = c => c.name.length>34 ? c.name.slice(0,32).trim()+'…' : c.name;
+  const subRow = (c, v) => `<tr style="font-size:12px"><td style="padding-left:14px;color:var(--ink-soft)"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${courseColor(c.id)};margin-right:7px"></span>${courseShort(c)}</td><td class="g" style="opacity:.8">+${v.g.toFixed(2)}€</td><td class="p" style="opacity:.8">-${v.p.toFixed(2)}€</td><td class="pd" style="opacity:.8">${v.pd.toFixed(2)}€</td></tr>`;
+
+  let html = '';
+  keys.forEach(k=>{
+    html += `<tr style="border-top:1px solid var(--border)"><td style="font-weight:500">${monthName(k)}</td><td class="g">+${totals[k].g.toFixed(2)}€</td><td class="p">-${totals[k].p.toFixed(2)}€</td><td class="pd">${totals[k].pd.toFixed(2)}€</td></tr>`;
+    state.courses.forEach(c=>{ if(byCourse[k][c.id]) html += subRow(c, byCourse[k][c.id]); });
+  });
+  html += `<tr style="font-weight:600;border-top:1px solid var(--ink)"><td>Total</td><td class="g">+${sum.g.toFixed(2)}€</td><td class="p">-${sum.p.toFixed(2)}€</td><td class="pd">${sum.pd.toFixed(2)}€</td></tr>`;
+  state.courses.forEach(c=>{
+    const v = {g:0,p:0,pd:0};
+    keys.forEach(k=>{ const x = byCourse[k][c.id]; if(x){ v.g+=x.g; v.p+=x.p; v.pd+=x.pd; } });
+    html += subRow(c, v);
+  });
+  body.innerHTML = html;
 }
 
 function workDaysInMonth(key){
