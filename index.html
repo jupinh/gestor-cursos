@@ -267,7 +267,7 @@
       <div class="field"><label>Subs. Natal — duodécimos (€)</label><input type="number" id="work-natal" step="0.01" min="0"></div>
       <div class="field"><label>Segurança Social (%)</label><input type="number" id="work-ss" step="0.1" min="0"></div>
     </div>
-    <p class="hint" style="margin-bottom:20px">Horário de referência: Segunda a Sexta, 9h20–17h30. Valores do recibo de vencimento: o vencimento base é mensal, o subsídio de alimentação é pago só nos dias trabalhados (segunda a sexta, sem feriados nem férias) e a Segurança Social incide sobre vencimento + duodécimos. A tabela mostra o líquido estimado. Cada falta desconta as horas não trabalhadas e o subsídio desse dia (meio dia = metade). Ausências com atestado médico podem ser registadas como "Com atestado" e não descontam, como aconteceu no teu recibo de setembro.</p>
+    <p class="hint" style="margin-bottom:20px">Horário de referência: Segunda a Sexta, 9h20–17h30. Valores do recibo de vencimento: o vencimento base é mensal, o subsídio de alimentação é pago só nos dias trabalhados (segunda a sexta, sem feriados nem férias) e a Segurança Social incide sobre vencimento + duodécimos. A tabela mostra o líquido estimado. Cada falta desconta as horas não trabalhadas e o subsídio desse dia (meio dia = metade). Dias de home office não descontam: regista-os com "Registar home office" só para ficarem visíveis no calendário. Ausências com atestado médico podem ser registadas como "Com atestado" e não descontam, como aconteceu no teu recibo de setembro.</p>
 
     <div class="cal-nav" style="padding-left:0">
       <button onclick="changeWorkCalMonth(-1)">‹</button>
@@ -284,6 +284,7 @@
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block"></span>Férias</span>
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block"></span>Feriado</span>
       <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:#7F77DD;display:inline-block"></span>Atestado</span>
+      <span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;margin-bottom:6px;font-size:12.5px;color:var(--ink-soft)"><span style="width:8px;height:8px;border-radius:50%;background:#378ADD;display:inline-block"></span>Home office</span>
     </div>
     <div id="work-holiday-list" style="margin-bottom:20px"></div>
 
@@ -294,6 +295,7 @@
     <div style="margin-top:18px;display:flex;gap:20px;flex-wrap:wrap">
       <button onclick="toggleAddAbsence()" style="border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)">+ Registar falta</button>
       <button onclick="toggleAddVacation()" style="border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)">+ Registar férias</button>
+      <button onclick="toggleAddRemote()" style="border:none;background:transparent;padding:0;font-size:12.5px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;text-decoration-color:var(--border)">+ Registar home office</button>
     </div>
     <div class="add-session-inline" id="add-absence-inline">
       <input type="date" class="as-date" id="absence-date">
@@ -315,8 +317,15 @@
       <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmAddVacation()">Registar férias</button>
     </div>
 
+    <div class="add-session-inline" id="add-remote-inline">
+      <input type="date" class="as-date" id="remote-date">
+      <input type="text" class="as-note" placeholder="Nota (opcional)" id="remote-note" style="flex:1;min-width:160px">
+      <button class="primary-btn" style="margin:0;padding:6px 14px" onclick="confirmAddRemote()">Registar home office</button>
+    </div>
+
     <div id="absence-list" style="margin-top:14px"></div>
     <div id="vacation-list" style="margin-top:8px"></div>
+    <div id="remote-list" style="margin-top:8px"></div>
   </div>
 
   <button class="fab" id="fab-add" onclick="toggleAddPanel()">
@@ -379,7 +388,7 @@ async function storageSet(key, value){
   return true;
 }
 
-let state = { courses: [], work: { salary: 920, hourly: 5.31, hoursPerDay: 8, subsFerias: 76.03, subsNatal: 75.62, ssPct: 11, subsidyDay: 7.63, divisor: 22, absences: [], vacations: [] } };
+let state = { courses: [], work: { salary: 920, hourly: 5.31, hoursPerDay: 8, subsFerias: 76.03, subsNatal: 75.62, ssPct: 11, subsidyDay: 7.63, divisor: 22, absences: [], vacations: [], remote: [] } };
 let mode = 'manual';
 let selectedWeekdays = new Set();
 let openDetails = {}; // sessionKey -> bool, for link/note panel
@@ -464,7 +473,7 @@ async function loadState(){
           if(s.note===undefined) s.note='';
         });
       });
-      if(!state.work) state.work = { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[] };
+      if(!state.work) state.work = { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[], remote:[] };
       if(state.work.hourly===undefined) state.work.hourly = 5.31;
       if(state.work.hoursPerDay===undefined) state.work.hoursPerDay = 8;
       if(!state.work.salary) state.work.salary = 920;
@@ -474,11 +483,12 @@ async function loadState(){
       if(state.work.salary===910) state.work.salary = 920;
       if(state.work.subsidyDay===undefined) state.work.subsidyDay = 7.63;
       if(state.work.vacations===undefined) state.work.vacations = [];
+      if(state.work.remote===undefined) state.work.remote = [];
       state.work.absences.forEach(a=>{ if(a.period===undefined) a.period='full'; });
       return;
     }
   }catch(e){}
-  state = { courses: seedData.map(seedCourse), work: { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[] } };
+  state = { courses: seedData.map(seedCourse), work: { salary:920, hourly:5.31, hoursPerDay:8, subsFerias:76.03, subsNatal:75.62, ssPct:11, subsidyDay:7.63, divisor:22, absences:[], vacations:[], remote:[] } };
   await saveState();
 }
 
@@ -677,6 +687,18 @@ function renderWork(){
     </div></div>`;
   }).join('') : '';
 
+  const rlist = document.getElementById('remote-list');
+  const rsorted = [...w.remote].sort((a,b)=>parseDMY(b.date)-parseDMY(a.date));
+  rlist.innerHTML = rsorted.length ? rsorted.map(a=>{
+    const idx = w.remote.indexOf(a);
+    return `<div class="session-row"><div class="session-main">
+      <span class="session-date">${a.date} · ${weekdayLabel(a.date)}</span>
+      <span style="color:var(--ink-soft);flex:1">${a.note||'home office'}</span>
+      <span class="session-value" style="color:#378ADD">home office</span>
+      <button class="icon-btn" onclick="deleteRemote(${idx})" title="Remover">✕</button>
+    </div></div>`;
+  }).join('') : '';
+
   renderWorkCalendar();
 }
 
@@ -711,6 +733,25 @@ async function confirmAddAbsence(){
 }
 async function deleteAbsence(idx){
   state.work.absences.splice(idx,1);
+  renderWork(); await saveState();
+}
+
+function toggleAddRemote(){
+  document.getElementById('add-remote-inline').classList.toggle('open');
+}
+async function confirmAddRemote(){
+  const dateV = document.getElementById('remote-date').value;
+  if(!dateV) return;
+  const [y,m,d] = dateV.split('-');
+  const note = document.getElementById('remote-note').value.trim();
+  state.work.remote.push({date:`${d}/${m}/${y}`, note});
+  document.getElementById('remote-date').value='';
+  document.getElementById('remote-note').value='';
+  document.getElementById('add-remote-inline').classList.remove('open');
+  renderWork(); await saveState();
+}
+async function deleteRemote(idx){
+  state.work.remote.splice(idx,1);
   renderWork(); await saveState();
 }
 
@@ -752,6 +793,7 @@ function renderWorkCalendar(){
   const absenceSet = new Set(state.work.absences.filter(a=>a.type!=='medical').map(a=>a.date));
   const medicalSet = new Set(state.work.absences.filter(a=>a.type==='medical').map(a=>a.date));
   const vacationSet = new Set(state.work.vacations.map(a=>a.date));
+  const remoteSet = new Set(state.work.remote.map(a=>a.date));
   let html = '';
   for(let i=0;i<firstDow;i++) html += '<div></div>';
   const monthHolidays = [];
@@ -765,6 +807,7 @@ function renderWorkCalendar(){
     let dots = '';
     if(medicalSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:#7F77DD"></span>`;
     if(absenceSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--red)"></span>`;
+    if(remoteSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:#378ADD"></span>`;
     if(vacationSet.has(dmy)) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--teal)"></span>`;
     if(holidayName) dots += `<span style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></span>`;
     const bg = holidayName ? 'var(--amber)14' : (isWeekend ? 'rgba(0,0,0,.02)' : 'transparent');
